@@ -1,0 +1,25 @@
+llm:
+  provider: gigachat
+  model_name: GigaChat-2-Max
+  verify_ssl: false
+  profanity_check: false
+  scope: GIGACHAT_API_CORP
+
+langfuse:
+  host: "https://experiments.ailabtools.org:3300/"
+  user: "Igor"
+
+asr:
+  chunk_size: 4000
+  sleep_time: 0.1
+  sampling_rate: 16000
+
+general:
+  max_improvements: 5
+  recursion_limit: 5
+  max_code_execution_time: 3000
+
+model_overrides:
+  llm_code_generator_agent:
+    provider: gigachat
+    model_name: GigaChat-2-Max

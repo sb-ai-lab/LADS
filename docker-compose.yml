@@ -1,0 +1,17 @@
+services:
+  ds-agent:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8501:8501"
+    volumes:
+      - .:/app
+      - ./datasets:/app/datasets
+    environment:
+      - LANGFUSE_PUBLIC_KEY=${LANGFUSE_PUBLIC_KEY}
+      - LANGFUSE_SECRET_KEY=${LANGFUSE_SECRET_KEY}
+      - LANGFUSE_HOST=${LANGFUSE_HOST}
+      - LANGFUSE_USER=${LANGFUSE_USER}
+      - LANGFUSE_SESSION=${LANGFUSE_SESSION}
+      - GIGACHAT_API_TOKEN=${GIGACHAT_API_TOKEN}
