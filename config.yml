@@ -6,8 +6,8 @@ llm:
   scope: GIGACHAT_API_CORP
 
 langfuse:
-  host: "https://experiments.ailabtools.org:3300/"
-  user: "Igor"
+  host: " " # add your adress 
+  user: " " # add your name of user
 
 asr:
   chunk_size: 4000
