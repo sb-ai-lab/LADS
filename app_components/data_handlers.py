@@ -21,7 +21,7 @@ def load_data(file_content: bytes, file_extension: str) -> pd.DataFrame:
     try:
         reader_func, _ = SUPPORTED_FILE_TYPES[file_extension.lower()]
         if file_extension.lower() == 'csv':
-            df = reader_func(StringIO(file_content.decode("utf-8")))
+            df = reader_func(StringIO(file_content.decode("utf-8")), index_col=0)
         else:
             df = reader_func(BytesIO(file_content))
         return df

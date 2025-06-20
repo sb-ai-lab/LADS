@@ -50,10 +50,10 @@ def render_conversation_messages():
         elif message.get("role") == "assistant" and current_user_message is not None:
             exchanges.append((current_user_message, message))
             current_user_message = None
-
-    for (user_msg, assistant_msg) in exchanges:
-        render_conversation(user_msg, assistant_msg)
-
+   
+    tables_results = st.session_state.benchmark_history
+    for (user_msg, assistant_msg), table_raw in zip(exchanges, tables_results):
+        render_conversation(user_msg, assistant_msg, table_raw)
 
 def render_input_section():
     chat_input_fragment()

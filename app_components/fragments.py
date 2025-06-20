@@ -1,4 +1,6 @@
 import streamlit as st
+import pandas as pd
+import markdown
 from typing import Dict, Any, List, Optional
 
 from .agent_handler import stream_agent_response_for_frontend
@@ -7,7 +9,20 @@ from .media_utils import handle_audio_input
 from .session_state import create_new_conversation
 from .data_handlers import SUPPORTED_FILE_TYPES
 
-COLUMN_SHAPES = [1.5, 1]
+COLUMN_SHAPES = [1, 1]
+BENCHMARK_CSV_PATH = "benchmark/benchmark_results.csv"
+ID = "employee_promotion"
+WORDS_FONT = 20
+
+def get_benchmarks_from_csv(benchmark_csv_path, id):
+    df = pd.read_csv(benchmark_csv_path)
+    row = df[df['id'] == id].iloc[0]
+    return row
+
+def update_ds_agent_history(benchmark_csv_path, id, ds_agent_result):
+    df = pd.read_csv(benchmark_csv_path)
+    df.loc[df['id'] == id, 'ds_agent_history'] = ds_agent_result
+    df.to_csv(benchmark_csv_path, index=False)
 
 
 def extract_final_response(assistant_message: Dict[str, Any]) -> str:
@@ -22,6 +37,10 @@ def extract_final_response(assistant_message: Dict[str, Any]) -> str:
         return assistant_message.get('content', '')
 
 
+def convert_markdown_to_html(text):
+    return markdown.markdown(text, extensions=['extra', 'smarty'])
+
+
 def render_status_boxes(
     progress_messages: List[str], 
     interpretation_messages: List[str],
@@ -30,14 +49,14 @@ def render_status_boxes(
     state: str = "complete",
     expanded: bool = True,
     status_placeholder: Optional[st.empty] = None,
-    pipeline_placeholder: Optional[st.empty] = None
+    pipeline_placeholder: Optional[st.empty] = None,
 ):
 
     subcol1, subcol2 = st.columns(COLUMN_SHAPES)
 
-    with subcol1:
+    with subcol2:
         if status_placeholder and state == "running":
-            with status_placeholder.container():
+            with status_placeholder.container(height=700):
                 with st.status(progress_title, state=state, expanded=expanded):
                     for msg in progress_messages:
                         with st.chat_message("assistant"):
@@ -53,21 +72,23 @@ def render_status_boxes(
                     with st.chat_message("assistant"):
                         st.markdown(msg)
 
-    with subcol2:
+    with subcol1:
         if pipeline_placeholder and state == "running":
-            with pipeline_placeholder.container():
+            with pipeline_placeholder.container(height=700):
                 with st.status(interpretation_title, state=state, expanded=expanded):
                     valid_human_entries = [str(h) for h in interpretation_messages if h is not None]
                     for msg in valid_human_entries:
                         with st.chat_message("assistant"):
-                            st.markdown(msg)
+                            msg_html = convert_markdown_to_html(msg)
+                            st.markdown(f"<div style='font-size:{WORDS_FONT}px;'>{msg_html}</div>", unsafe_allow_html=True)
 
         elif not (status_placeholder and state == "running"):
             with st.status(interpretation_title, state=state, expanded=expanded):
                 valid_human_entries = [str(h) for h in interpretation_messages if h is not None]
                 for msg in valid_human_entries:
                     with st.chat_message("assistant"):
-                        st.markdown(msg)
+                        msg_html = convert_markdown_to_html(msg)
+                        st.markdown(f"<div style='font-size:{WORDS_FONT}px;'>{msg_html}</div>", unsafe_allow_html=True)
 
 
 @st.fragment
@@ -120,6 +141,10 @@ def switch_conversation(conv_id):
     st.session_state.current_conversation = conv_id
     st.session_state.user_input_key += 1
     st.session_state.accumulated_status_messages = []
+
+    if "shown_human_messages" in st.session_state:
+        st.session_state.shown_human_messages = set()
+
     st.rerun()
 
 
@@ -144,9 +169,9 @@ def setup_chat_placeholders():
     user_message_placeholder = st.empty()
     subcol1, subcol2 = st.columns(COLUMN_SHAPES)
 
-    with subcol1:
-        status_box_placeholder = st.empty()
     with subcol2:
+        status_box_placeholder = st.empty()
+    with subcol1:
         human_pipeline_content_placeholder = st.empty()
 
     return user_message_placeholder, status_box_placeholder, human_pipeline_content_placeholder
@@ -171,8 +196,10 @@ def process_agent_events(status_placeholder, pipeline_placeholder):
         if event["type"] == "assistant_message_chunk":
             content = event["content"]
             human_content = event.get("human_content", None)
+            node_name = event.get("node_name", "")
 
-            st.session_state.accumulated_status_messages.append(content)
+            if node_name not in ["human_explanation", "task_validator_explanation", "code_improvement_explanation", "result_explanation"]:
+                st.session_state.accumulated_status_messages.append(content)
 
             if human_content:
                 accumulated_interpretation_messages.append(human_content)
@@ -211,6 +238,25 @@ def finalize_conversation(temp_assistant_messages, accumulated_interpretation_me
         }
         st.session_state.conversations[current_conv_id].append(consolidated_message)
 
+def get_table_results():
+    row = get_benchmarks_from_csv(BENCHMARK_CSV_PATH, ID)
+    
+    if st.session_state.get("extract_metric", []):
+        ds_agent_result = max(st.session_state.extract_metric)
+    else:
+        ds_agent_result = row['our_data']
+
+    data = {
+        'LogisticRegression': row['LogisticRegression'],
+        'LGBM': row['LGBM'],
+        'Tabular NN': row['Tabular NN'],
+        'DS Agent': ds_agent_result,
+    }
+
+    if st.session_state.current_node == "no_code_agent":
+        data = None
+        
+    st.session_state.benchmark_history.append(data)
 
 def cleanup_and_rerun(user_message_placeholder, status_placeholder, pipeline_placeholder):
     status_placeholder.empty()
@@ -238,6 +284,9 @@ def chat_input_fragment():
         if submit_button and user_input and st.session_state.current_conversation:
             current_conv_id = st.session_state.current_conversation
 
+            if "shown_human_messages" in st.session_state:
+                st.session_state.shown_human_messages = set()
+
             user_message_data = {"role": "user", "content": user_input}
             st.session_state.conversations[current_conv_id].append(user_message_data)
 
@@ -252,14 +301,13 @@ def chat_input_fragment():
             pipeline_placeholder = human_pipeline_content_placeholder.empty()
 
             temp_assistant_messages, accumulated_interpretation_messages = process_agent_events(status_placeholder, pipeline_placeholder)
-
+            get_table_results()
             finalize_conversation(temp_assistant_messages, accumulated_interpretation_messages, current_conv_id)
-
             cleanup_and_rerun(user_message_placeholder, status_placeholder, pipeline_placeholder)
 
 
 @st.fragment
-def render_conversation(user_message: str, assistant_message: Dict[str, Any]):
+def render_conversation(user_message: str, assistant_message: Dict[str, Any], table_raw=None):
 
     with st.chat_message("user"):
         st.markdown(user_message)
@@ -275,4 +323,15 @@ def render_conversation(user_message: str, assistant_message: Dict[str, Any]):
 
     with st.chat_message("assistant"):
         final_response_text = extract_final_response(assistant_message)
-        st.markdown(final_response_text)
+        final_response_html = convert_markdown_to_html(final_response_text)
+        st.markdown(f"<div style='font-size:{WORDS_FONT}px;'>{final_response_html}</div>", unsafe_allow_html=True)
+    
+    with st.container():
+        if st.session_state.benchmark_history and table_raw is not None:
+            st.markdown("#### Benchmark")
+            df = pd.DataFrame([table_raw])
+            if st.session_state.benchmark_history[-1] is not None:
+                update_ds_agent_history(BENCHMARK_CSV_PATH, ID, st.session_state.benchmark_history[-1]['DS Agent'])
+            st.dataframe(df.style.highlight_max(axis=1, color="#39FF14"), use_container_width=True)
+        st.markdown("---")
+

@@ -25,18 +25,18 @@ def main():
     target = args.target
 
     df = pd.read_csv('datasets/'+df_name)
-    
+
     train_df, test_df = train_test_split(df, test_size=0.2, random_state=42)
 
     automl = TabularAutoML(
-        task = Task(
-            name = task_type,
-            metric = task_metric
+        task=Task(
+            name=task_type,
+            metric=task_metric
         ),
-        timeout = 30
+        timeout=30
     )
 
-    oof_preds = automl.fit_predict(train_df, roles = {'target': target}).data
+    oof_preds = automl.fit_predict(train_df, roles={'target': target}).data
     test_preds = automl.predict(test_df).data
     if task_type == "reg":
         print("R2 score on oof data:", r2_score(train_df[target].values, oof_preds[:, 0]))
@@ -44,6 +44,7 @@ def main():
     else:
         print("ROC-AUC score on oof data:", roc_auc_score(train_df[target].values, oof_preds[:, 0]))
         print("ROC-AUC score on test data:", roc_auc_score(test_df[target].values, test_preds[:, 0]))
+
 
 if __name__ == '__main__':
     main()

@@ -18,7 +18,11 @@ def initialize_session_state() -> None:
         "transcribed_text": "",
         "loading_message": "",
         "uuid": str(uuid.uuid4()),
-        "accumulated_status_messages": []
+        "accumulated_status_messages": [],
+        "extract_metric":[],
+        "benchmark_history": [],
+        "last_benchmark_index": -1,
+        "current_node": None
     }
 
     for key, default_value in default_session_state.items():
@@ -36,5 +40,8 @@ def create_new_conversation() -> str:
     st.session_state.user_input_key += 1
 
     st.session_state.accumulated_status_messages = []
+
+    if "shown_human_messages" in st.session_state:
+        st.session_state.shown_human_messages = set()
 
     return conversation_id
