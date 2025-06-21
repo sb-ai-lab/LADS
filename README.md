@@ -3,7 +3,7 @@
 
 # How to run
 
-1. Create new enviroment with `conda env create -f enviroment.yml`
+1. Create new enviroment with `conda env create -f environment.yml`
 > If you already have some enviroment that you would like yo use then you can update it with `conda env update --file environment.yml`
 2. Activate your enviroment with `conda activate ds-agent`
 3. Generate protobuf classes

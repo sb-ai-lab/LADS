@@ -5,100 +5,112 @@ import os
 import re
 import json
 
-import re
-from typing import List
 from graph.state import AgentState
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import AIMessage
 
 lightautoml_template = 'graph/lightautoml_template.py'
 
 PYTHON_REGEX = r"```python-execute(.+?)```"
 JSON_REGEX = r"```json(.+?)```"
 
-def extract_text_from_results(results) -> List[str]:
-    return "\n".join([result.text for result in results if result.text])
+lightautoml_error = """В результате выполнения блока {lightautoml_template} возникла ошибка:
+```
+{process_err}
+```
+Исправь ошибку
+"""
 
-def extract_images_from_results(results) -> List[str]:
-    image_descriptions = []
-    for result in results:
-        if result.png:
-            image_descriptions.append("Generated plot")
-        elif result.chart:
-            image_descriptions.append("Generated chart")
-    return "\n".join(image_descriptions) if image_descriptions else ""
-    
+lightautoml_result = """Результат выполнения блока {lightautoml_template}:
+```
+{process_stdout}
+```
+"""
+
+matplotlib_setup = """
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+plt.ioff()  # Turn off interactive mode
+"""
+
+local_exec_result = """Результат выполнения блока {index}:
+```
+{process_stdout}
+```"""
+
+local_exec_error = """В результате выполнения блока {index} возникла ошибка:
+```
+{process_stderr}
+```
+Исправь ошибку"""
+
+timeout = 3000
+
+e2b_exec_error = """В результате выполнения блока {index} возникла ошибка:
+```
+{execution_error_traceback}
+```
+Исправь ошибку"""
+
+e2b_exec_result = """Результат выполнения блока {index}:
+```
+{logs}
+{text_results}
+```"""
+
+
 def execute_code(state: AgentState):
-    """Выполнение кода"""
     messages = state['messages']
     sandbox = state['sandbox']
     code_blocks = re.findall(PYTHON_REGEX, messages[-1].content, re.DOTALL | re.MULTILINE)
     results = []
     executions = []
 
-    # Add matplotlib configuration to ensure proper display
-    setup_code = """
-import matplotlib
-matplotlib.use('Agg')
-import matplotlib.pyplot as plt
-plt.ioff()  # Turn off interactive mode
-"""
-    
     for index, code_block in enumerate(code_blocks):
-        # Add matplotlib setup to the beginning of each code block
-        full_code = setup_code + code_block + "\nplt.close('all')"  # Close all figures after execution
+        full_code = matplotlib_setup + code_block + "\nplt.close('all')"
         execution = sandbox.run_code(full_code)
         executions.append(execution)
         
         if execution.error:
-            results.append(f"""В результате выполнения блока {index} возникла ошибка:
-```
-{execution.error.traceback}
-```
-Исправь ошибку""")
+            results.append(e2b_exec_error.fromat(
+                index=index,
+                execution_error_traceback=execution.error.traceback
+            ))
             break
         else:
             logs = '\n'.join(execution.logs.stdout)
-            text_results = extract_text_from_results(execution.results)
-            image_results = extract_images_from_results(execution.results)
-            result_text = f"""Результат выполнения блока {index}:
-```
-{logs}
-{text_results}
-{image_results}
-```"""
+            text_results = "\n".join([result.text for result in execution.results if result.text])
+            result_text = e2b_exec_result.format(
+                index=index,
+                logs=logs,
+                text_results=text_results
+            )
             results.append(result_text.strip())
             
-    message = HumanMessage(content="\n".join(results), additional_kwargs={"executions": executions})
+    message = AIMessage(content="\n".join(results))
     return {"messages": message}
 
+
 def execute_code_locally(state: AgentState):
-    """Execute Python code locally using subprocess"""
     messages = state['messages']
     code_blocks = re.findall(PYTHON_REGEX, messages[-1].content, re.DOTALL | re.MULTILINE)
     results = []
     executions = []
 
-    setup_code = """
-import matplotlib
-matplotlib.use('Agg')
-import matplotlib.pyplot as plt
-plt.ioff()  # Turn off interactive mode
-"""
-
     for index, code_block in enumerate(code_blocks):
         with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as temp_file:
-            full_code = setup_code + code_block + "\nplt.close('all')"
+            full_code = matplotlib_setup + code_block + "\nplt.close('all')"
             temp_file.write(full_code)
             temp_file.flush()
-            
+
             try:
                 process = subprocess.run(
                     [sys.executable, temp_file.name],
                     capture_output=True,
                     text=True,
-                    timeout=30
+                    timeout=timeout
                 )
-                
+
                 execution_result = type('ExecutionResult', (), {
                     'logs': type('Logs', (), {'stdout': [process.stdout] if process.stdout else []}),
                     'results': [],
@@ -106,31 +118,35 @@ plt.ioff()  # Turn off interactive mode
                         'traceback': process.stderr
                     })
                 })
-                
+
                 if process.returncode == 0:
-                    result_text = f"""Результат выполнения блока {index}:
-```
-{process.stdout}
-```"""
+                    result_text = local_exec_result.format(
+                        index=index,
+                        process_stdout=process.stdout
+                    )
                     results.append(result_text.strip())
                 else:
-                    results.append(f"""В результате выполнения блока {index} возникла ошибка:
-```
-{process.stderr}
-```
-Исправь ошибку""")
+                    results.append(local_exec_error.format(
+                        index=index,
+                        process_stderr=process.stderr
+                    ))
                     break
-                    
+
                 executions.append(execution_result)
-                
+
             except subprocess.TimeoutExpired:
-                results.append(f"Блок {index} превысил время выполнения (30 секунд)")
+                results.append(f"Блок {index} превысил время выполнения ({timeout} секунд)")
                 break
             finally:
                 os.unlink(temp_file.name)
-    
-    message = HumanMessage(content="\n".join(results), additional_kwargs={"executions": executions})
-    return {"messages": message}
+
+    message = AIMessage(content="\n".join(results))
+    result_code = "\n".join(code_blocks)
+    old_code = state['generated_code']
+    old_code.append(result_code)
+    old_results = state['code_results']
+    old_results.append(results)
+    return {"messages": message, "generated_code": old_code, "code_results": old_results}
 
 
 def execute_lightautoml_locally(state: AgentState):
@@ -141,13 +157,10 @@ def execute_lightautoml_locally(state: AgentState):
     results = []
     executions = []
 
-    # code = open(lightautoml_template, "r").read()
-
     try:
         process = subprocess.run(
             [
                 sys.executable,
-                # "-W", "ignore",
                 lightautoml_template,
                 "--df_name", state['df_name'],
                 "--task_type", config['task_type'],
@@ -156,9 +169,9 @@ def execute_lightautoml_locally(state: AgentState):
             ],
             capture_output=True,
             text=True,
-            timeout=3000
+            timeout=timeout
         )
-        
+
         execution_result = type('ExecutionResult', (), {
             'logs': type('Logs', (), {'stdout': [process.stdout] if process.stdout else []}),
             'results': [],
@@ -166,30 +179,23 @@ def execute_lightautoml_locally(state: AgentState):
                 'traceback': process.stderr
             })
         })
-        
+
         if process.returncode == 0:
-            result_text = f"""Результат выполнения блока {lightautoml_template}:
-```
-{process.stdout}
-```"""
+            result_text = lightautoml_result.format(
+                lightautoml_template=lightautoml_template,
+                process_stdout=process.stdout
+            )
             results.append(result_text.strip())
         else:
-            results.append(f"""В результате выполнения блока {lightautoml_template} возникла ошибка:
-```
-{process.stderr}
-```
-Исправь ошибку""")
-                    
-        executions.append(execution_result)
-                
-    except subprocess.TimeoutExpired:
-        results.append(f"Блок {lightautoml_template} превысил время выполнения (3000 секунд)")
+            results.append(lightautoml_error.format(
+                lightautoml_template=lightautoml_template,
+                process_err=process.stderr
+            ))
 
-    # lf_handler = langfuse_context.get_current_langchain_handler()
-    # langfuse_context.score_current_trace(
-    #     name = "test-roc-auc",
-    #     value = float(process.stdout.split(' ')[-1]),
-    #     comment = "check roc_auc!"
-    # )
-    message = HumanMessage(content="\n".join(results), additional_kwargs={"executions": executions})
+        executions.append(execution_result)
+
+    except subprocess.TimeoutExpired:
+        results.append(f"Блок {lightautoml_template} превысил время выполнения ({timeout} секунд)")
+
+    message = AIMessage(content="\n".join(results))
     return {"messages": message}

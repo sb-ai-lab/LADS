@@ -1,5 +1,6 @@
 import time
 import uuid
+import re
 import logging
 import streamlit as st
 from typing import List, Tuple
@@ -65,6 +66,9 @@ def stream_agent_response_for_frontend():
     langfuse_handler = st.session_state.get("langfuse_handler", None)
     rec_lim = config.general.recursion_limit
 
+    if "shown_human_messages" not in st.session_state:
+        st.session_state.shown_human_messages = set()
+
     if (st.session_state.current_conversation not in st.session_state.conversations):
         st.error("Error: Current conversation not found.")
         return
@@ -95,16 +99,37 @@ def stream_agent_response_for_frontend():
 
         for values in agent.stream(agent_message, stream_mode="values", config=agent_config):
             human_content = None
+            matches = None
 
             hu_list = values.get("human_understanding", [])
+            current_node = values.get("current_node")
+            st.session_state.current_node = current_node
+
             if hu_list:
-                hu_content = hu_list[-1]
-                if isinstance(hu_content, list):
-                    hu_content = "\n".join(str(item) for item in hu_content)
-                human_content = str(hu_content)
+                for hu_content in hu_list:
+                    if isinstance(hu_content, list):
+                        hu_content_str = "\n".join(str(item) for item in hu_content)
+                    else:
+                        hu_content_str = str(hu_content)
+
+                    if hu_content_str not in st.session_state.shown_human_messages:
+                        st.session_state.shown_human_messages.add(hu_content_str)
+                        human_content = hu_content_str
+                        break
+
+            if current_node == "result_summarization_agent":
+                matches = re.findall(r'ROC_AUC: ([0-9]*\.[0-9]+)', values["messages"][-1].content)
+            elif current_node == "lightautoml_local_executor":
+                matches = re.findall(r'test data: ([0-9]*\.[0-9]+)', values["messages"][-1].content)
+            if matches is not None:
+                for match in matches:
+                        metric = float(match)
+                        st.session_state.extract_metric.append(metric)
 
             message = values["messages"][-1]
-            current_node = values.get("current_node")
+
+            if current_node is None:
+                continue
 
             node_message_content = f"**{current_node}:** {message.content}"
 

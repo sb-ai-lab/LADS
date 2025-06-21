@@ -44,7 +44,7 @@ logger.addHandler(console_handler)
 
 def main():
 
-    st.set_page_config(layout="wide", page_title="DS Agent")
+    st.set_page_config(layout="wide", page_title="DS Agent", page_icon="image/sber.png")
 
     config = load_config()
     st.session_state.setdefault("config", config)
