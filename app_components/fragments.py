@@ -60,8 +60,7 @@ def render_status_boxes(
                 with st.status(progress_title, state=state, expanded=expanded):
                     for msg in progress_messages:
                         with st.chat_message("assistant"):
-                            msg_html = convert_markdown_to_html(msg)
-                            st.markdown(f"<div style='font-size:{WORDS_FONT}px;'>{msg_html}</div>", unsafe_allow_html=True)
+                            st.markdown(msg)
         else:
             with st.status(progress_title, state=state, expanded=expanded):
                 valid_progress_entries = [str(p) for p in progress_messages if p is not None]
@@ -71,8 +70,7 @@ def render_status_boxes(
                     progress_for_box = []
                 for msg in progress_for_box:
                     with st.chat_message("assistant"):
-                        msg_html = convert_markdown_to_html(msg)
-                        st.markdown(f"<div style='font-size:{WORDS_FONT}px;'>{msg_html}</div>", unsafe_allow_html=True)
+                        st.markdown(msg)
 
     with subcol1:
         if pipeline_placeholder and state == "running":
@@ -81,16 +79,18 @@ def render_status_boxes(
                     valid_human_entries = [str(h) for h in interpretation_messages if h is not None]
                     for msg in valid_human_entries:
                         with st.chat_message("assistant"):
-                            msg_html = convert_markdown_to_html(msg)
-                            st.markdown(f"<div style='font-size:{WORDS_FONT}px;'>{msg_html}</div>", unsafe_allow_html=True)
+                            st.markdown(msg)
+                            # final_response_html = convert_markdown_to_html(final_response_text)
+                            # st.markdown(f"<div style='font-size:{WORDS_FONT}px;'>{final_response_html}</div>", unsafe_allow_html=True)
 
         elif not (status_placeholder and state == "running"):
             with st.status(interpretation_title, state=state, expanded=expanded):
                 valid_human_entries = [str(h) for h in interpretation_messages if h is not None]
                 for msg in valid_human_entries:
                     with st.chat_message("assistant"):
-                        msg_html = convert_markdown_to_html(msg)
-                        st.markdown(f"<div style='font-size:{WORDS_FONT}px;'>{msg_html}</div>", unsafe_allow_html=True)
+                        st.markdown(msg)
+                        # final_response_html = convert_markdown_to_html(final_response_text)
+                        # st.markdown(f"<div style='font-size:{WORDS_FONT}px;'>{final_response_html}</div>", unsafe_allow_html=True)
 
 
 @st.fragment
@@ -325,8 +325,9 @@ def render_conversation(user_message: str, assistant_message: Dict[str, Any], ta
 
     with st.chat_message("assistant"):
         final_response_text = extract_final_response(assistant_message)
-        final_response_html = convert_markdown_to_html(final_response_text)
-        st.markdown(f"<div style='font-size:{WORDS_FONT}px;'>{final_response_html}</div>", unsafe_allow_html=True)
+        st.markdown(final_response_text)
+        # final_response_html = convert_markdown_to_html(final_response_text)
+        # st.markdown(f"<div style='font-size:{WORDS_FONT}px;'>{final_response_html}</div>", unsafe_allow_html=True)
     
     with st.container():
         if st.session_state.benchmark_history and table_raw is not None:
