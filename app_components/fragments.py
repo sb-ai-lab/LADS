@@ -12,7 +12,7 @@ from .data_handlers import SUPPORTED_FILE_TYPES
 COLUMN_SHAPES = [1, 1]
 BENCHMARK_CSV_PATH = "benchmark/benchmark_results.csv"
 ID = "employee_promotion"
-WORDS_FONT = 20
+WORDS_FONT = 16
 
 def get_benchmarks_from_csv(benchmark_csv_path, id):
     df = pd.read_csv(benchmark_csv_path)
@@ -60,7 +60,8 @@ def render_status_boxes(
                 with st.status(progress_title, state=state, expanded=expanded):
                     for msg in progress_messages:
                         with st.chat_message("assistant"):
-                            st.markdown(msg)
+                            msg_html = convert_markdown_to_html(msg)
+                            st.markdown(f"<div style='font-size:{WORDS_FONT}px;'>{msg_html}</div>", unsafe_allow_html=True)
         else:
             with st.status(progress_title, state=state, expanded=expanded):
                 valid_progress_entries = [str(p) for p in progress_messages if p is not None]
@@ -70,7 +71,8 @@ def render_status_boxes(
                     progress_for_box = []
                 for msg in progress_for_box:
                     with st.chat_message("assistant"):
-                        st.markdown(msg)
+                        msg_html = convert_markdown_to_html(msg)
+                        st.markdown(f"<div style='font-size:{WORDS_FONT}px;'>{msg_html}</div>", unsafe_allow_html=True)
 
     with subcol1:
         if pipeline_placeholder and state == "running":

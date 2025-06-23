@@ -117,7 +117,7 @@ def stream_agent_response_for_frontend():
                         human_content = hu_content_str
                         break
 
-            if current_node == "result_summarization_agent":
+            if current_node == "result_summarization_agent" or current_node == "fedot_config_generator":
                 matches = re.findall(r'ROC_AUC: ([0-9]*\.[0-9]+)', values["messages"][-1].content)
             elif current_node == "lightautoml_local_executor":
                 matches = re.findall(r'test data: ([0-9]*\.[0-9]+)', values["messages"][-1].content)
