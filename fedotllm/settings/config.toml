@@ -1,0 +1,5 @@
+[config]
+model = "gpt-4o-mini"
+base_url = "https://litellm.catbugisback.dev/"
+automl = "Fedot"
+fix_tries = 2

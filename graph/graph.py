@@ -10,13 +10,14 @@ from graph.llm_nodes import (
     code_generation_agent,
     validate_solution,
     code_improvement_agent,
-    lightautoml_router,
+    automl_router,
     lightautoml_congig_generator,
     feedback_for_code_improvement_agent,
     human_explanation_agent,
     code_router,
     no_code_agent,
     result_summarization_agent,
+    fedot_config_generator,
     final,
 )
 from utils.llm_factory import create_llm
@@ -35,9 +36,10 @@ CODE_IMPROVEMENT_EXPLANATION = "code_improvement_explanation"
 FEEDBACK_FOR_CODE_IMPROVEMENT = "feedback_for_code_improvement_agent"
 FEEDBACK_FOR_CODE_RESULTS = "feedback_for_code_results_agent"
 
-LIGHTAUTOML_ROUTER_AGENT = "lightautoml_router"
+AUTOML_ROUTER_AGENT = "automl_router"
 LIGHTAUTOML_CONFIG_GENERATOR_AGENT = "lightautoml_config_generator"
 LIGHTAUTOML_LOCAL_EXECUTOR = "lightautoml_local_executor"
+FEDOT_CONFIG_GENERATOR_AGENT = "fedot_config_generator"
 
 CODE_ROUTER = "code_router"
 NO_CODE_AGENT = "no_code_agent"
@@ -79,14 +81,16 @@ def check_number_improvements(state: AgentState) -> str:
 def code_router_func(state: AgentState) -> str:
     last_message = state['messages'][-1].content
     if "YES" in last_message:
-        return LIGHTAUTOML_ROUTER_AGENT
+        return AUTOML_ROUTER_AGENT
     else:
         return NO_CODE_AGENT
 
-def lightautoml_router_func(state: AgentState) -> str:
+def automl_router_func(state: AgentState) -> str:
     last_message = state['messages'][-1].content
-    if "YES" in last_message:
+    if "LAMA" in last_message:
         return LIGHTAUTOML_CONFIG_GENERATOR_AGENT
+    elif "FEDOT" in last_message:
+        return FEDOT_CONFIG_GENERATOR_AGENT
     else:
         return INPUT_AGENT
 
@@ -106,11 +110,13 @@ def graph_builder() -> StateGraph:
         LIGHTAUTOML_LOCAL_EXECUTOR: execute_lightautoml_locally,
         CODE_EXECUTOR: execute_code_locally,
         INPUT_NODE: input_node,
+        #FEDOT_CONFIG_GENERATOR_AGENT: fedot_config_generator,
     }
 
     llm_nodes = {
-        LIGHTAUTOML_ROUTER_AGENT: lightautoml_router,
+        AUTOML_ROUTER_AGENT: automl_router,
         LIGHTAUTOML_CONFIG_GENERATOR_AGENT: lightautoml_congig_generator,
+        FEDOT_CONFIG_GENERATOR_AGENT: fedot_config_generator,
         INPUT_AGENT: rephraser_agent,
         CODE_GENERATOR_AGENT: code_generation_agent,
         TASK_VALIDATOR: validate_solution,
@@ -138,21 +144,24 @@ def graph_builder() -> StateGraph:
     workflow.add_conditional_edges(
         CODE_ROUTER,
         code_router_func,
-        {LIGHTAUTOML_ROUTER_AGENT: LIGHTAUTOML_ROUTER_AGENT,
+        {AUTOML_ROUTER_AGENT: AUTOML_ROUTER_AGENT,
          NO_CODE_AGENT: NO_CODE_AGENT} 
     ) 
     workflow.add_edge(NO_CODE_AGENT, END)
 
     workflow.add_conditional_edges(
-        LIGHTAUTOML_ROUTER_AGENT,
-        lightautoml_router_func,
+        AUTOML_ROUTER_AGENT,
+        automl_router_func,
         {
             LIGHTAUTOML_CONFIG_GENERATOR_AGENT: LIGHTAUTOML_CONFIG_GENERATOR_AGENT,
+            FEDOT_CONFIG_GENERATOR_AGENT: FEDOT_CONFIG_GENERATOR_AGENT,
             INPUT_AGENT: INPUT_AGENT
         }
     )
     workflow.add_edge(LIGHTAUTOML_CONFIG_GENERATOR_AGENT, LIGHTAUTOML_LOCAL_EXECUTOR)
     workflow.add_edge(LIGHTAUTOML_LOCAL_EXECUTOR, END)
+
+    workflow.add_edge(FEDOT_CONFIG_GENERATOR_AGENT, END)
 
     workflow.add_edge(INPUT_AGENT, HUMAN_EXPLANATION)
 

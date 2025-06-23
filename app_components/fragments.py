@@ -12,7 +12,7 @@ from .data_handlers import SUPPORTED_FILE_TYPES
 COLUMN_SHAPES = [1, 1]
 BENCHMARK_CSV_PATH = "benchmark/benchmark_results.csv"
 ID = "employee_promotion"
-WORDS_FONT = 20
+WORDS_FONT = 16
 
 def get_benchmarks_from_csv(benchmark_csv_path, id):
     df = pd.read_csv(benchmark_csv_path)
@@ -79,16 +79,18 @@ def render_status_boxes(
                     valid_human_entries = [str(h) for h in interpretation_messages if h is not None]
                     for msg in valid_human_entries:
                         with st.chat_message("assistant"):
-                            msg_html = convert_markdown_to_html(msg)
-                            st.markdown(f"<div style='font-size:{WORDS_FONT}px;'>{msg_html}</div>", unsafe_allow_html=True)
+                            st.markdown(msg)
+                            # final_response_html = convert_markdown_to_html(final_response_text)
+                            # st.markdown(f"<div style='font-size:{WORDS_FONT}px;'>{final_response_html}</div>", unsafe_allow_html=True)
 
         elif not (status_placeholder and state == "running"):
             with st.status(interpretation_title, state=state, expanded=expanded):
                 valid_human_entries = [str(h) for h in interpretation_messages if h is not None]
                 for msg in valid_human_entries:
                     with st.chat_message("assistant"):
-                        msg_html = convert_markdown_to_html(msg)
-                        st.markdown(f"<div style='font-size:{WORDS_FONT}px;'>{msg_html}</div>", unsafe_allow_html=True)
+                        st.markdown(msg)
+                        # final_response_html = convert_markdown_to_html(final_response_text)
+                        # st.markdown(f"<div style='font-size:{WORDS_FONT}px;'>{final_response_html}</div>", unsafe_allow_html=True)
 
 
 @st.fragment
@@ -323,8 +325,9 @@ def render_conversation(user_message: str, assistant_message: Dict[str, Any], ta
 
     with st.chat_message("assistant"):
         final_response_text = extract_final_response(assistant_message)
-        final_response_html = convert_markdown_to_html(final_response_text)
-        st.markdown(f"<div style='font-size:{WORDS_FONT}px;'>{final_response_html}</div>", unsafe_allow_html=True)
+        st.markdown(final_response_text)
+        # final_response_html = convert_markdown_to_html(final_response_text)
+        # st.markdown(f"<div style='font-size:{WORDS_FONT}px;'>{final_response_html}</div>", unsafe_allow_html=True)
     
     with st.container():
         if st.session_state.benchmark_history and table_raw is not None:

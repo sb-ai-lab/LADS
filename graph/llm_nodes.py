@@ -1,10 +1,16 @@
 import re
+import os
+import shutil
 
 from langchain_core.messages import AIMessage
 
 from graph.state import AgentState
 from graph.prompts import load_prompt
 from graph.prompts import GIGACHAT_PROMPTS
+
+
+from fedotllm.llm import AIInference
+from fedotllm.main import FedotAI
 
 PYTHON_REGEX = r"```python-execute(.+?)```"
 
@@ -36,10 +42,6 @@ def find_message_with_code(state: AgentState):
     return extracted_code
 
 
-validate_solution_system_prompt = GIGACHAT_PROMPTS['validate_solution']['system']
-
-code_improvement_system_prompt = GIGACHAT_PROMPTS['code_improvement']['system']
-code_improvement_user_prompt = GIGACHAT_PROMPTS['code_improvement']['user']
 
 # Agent
 
@@ -117,9 +119,9 @@ def result_summarization_agent(state: AgentState, llm):
     return {"messages": response}
 
 
-def lightautoml_router(state: AgentState, llm):
+def automl_router(state: AgentState, llm):
 
-    prompt_template = load_prompt('lightautoml_router')
+    prompt_template = load_prompt('automl_router')
     chain = prompt_template | llm
     response = chain.invoke({"task": state['task']})
     return {"messages": response}
@@ -135,6 +137,29 @@ def lightautoml_congig_generator(state: AgentState, llm):
         "df_columns": state['df'].columns.tolist(),
         "df_head": state['df'].head().to_string()
     })
+    return {"messages": response}
+
+
+def fedot_config_generator(state: AgentState, llm) -> str:
+    
+    output_path = os.path.join(os.getcwd(), 'output')
+    if os.path.exists(output_path):
+        shutil.rmtree(output_path)
+    os.makedirs(output_path, exist_ok=True)
+
+    task_path = 'datasets/' #+ state['df_name']
+
+    fedot_ai = FedotAI(
+        task_path=task_path,
+        inference=AIInference(),
+        workspace=output_path,
+    )
+    output = fedot_ai.ainvoke(message=state['task'])
+
+    prompt_template = load_prompt('fedot_parser')
+    chain = prompt_template | llm
+    response = chain.invoke({"results": output['messages'][1].content})
+    
     return {"messages": response}
 
 
