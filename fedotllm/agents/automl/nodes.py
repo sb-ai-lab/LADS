@@ -324,7 +324,9 @@ def run_tests(state: AutoMLAgentState, workspace: Path, inference: AIInference):
                         condition=(
                             "Compare the submission file format with the sample submission file format to determine if they have the same structure by verifying the following:"
                             "1. Column names match exactly. 2. Data types in corresponding columns are compatible. 3. The overall structure, including column order and presence, is consistent.\n"
-                            "Note: Ignore differences in the values within the columns. Focus solely on structure, column names, and data types."
+                            "IMPORTANT: \n"
+                            "1. Ignore differences in the values within the columns."
+                            "2. Focus solely on structure, column names, and data types."
                         ),
                     )
                 )

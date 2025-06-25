@@ -156,11 +156,17 @@ def fedot_config_generator(state: AgentState, llm) -> str:
     )
     output = fedot_ai.ainvoke(message=state['task'])
 
+    # Extract the fedotllm agent message for Code interpretation
+    fedotllm_message = output['messages'][-1].content if len(output['messages']) > 1 else "No fedotllm message available"
+    
+    current_understanding = state.get('human_understanding', [])
+    updated_understanding = current_understanding + [f"**FedotLLM Agent Report:**\n{fedotllm_message}"]
+
     prompt_template = load_prompt('fedot_parser')
     chain = prompt_template | llm
     response = chain.invoke({"results": output['messages'][1].content})
     
-    return {"messages": response}
+    return {"messages": response, "human_understanding": updated_understanding}
 
 
 def human_explanation_agent(state: AgentState, llm):
