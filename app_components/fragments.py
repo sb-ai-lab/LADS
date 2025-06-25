@@ -8,11 +8,14 @@ from .data_handlers import load_data, save_file_to_disk
 from .media_utils import handle_audio_input
 from .session_state import create_new_conversation
 from .data_handlers import SUPPORTED_FILE_TYPES
+from utils.config.loader import load_config
+
+config = load_config()
 
 COLUMN_SHAPES = [1, 1]
 BENCHMARK_CSV_PATH = "benchmark/benchmark_results.csv"
-ID = "employee_promotion"
-WORDS_FONT = 16
+ID = config.general.dataset
+WORDS_FONT = config.general.word_font
 
 def get_benchmarks_from_csv(benchmark_csv_path, id):
     df = pd.read_csv(benchmark_csv_path)
@@ -200,7 +203,7 @@ def process_agent_events(status_placeholder, pipeline_placeholder):
             human_content = event.get("human_content", None)
             node_name = event.get("node_name", "")
 
-            if node_name not in ["human_explanation", "task_validator_explanation", "code_improvement_explanation", "result_explanation"]:
+            if node_name not in ["human_explanation_planning", "human_explanation_validator", "human_explanation_improvement", "human_explanation_results"]:
                 st.session_state.accumulated_status_messages.append(content)
 
             if human_content:

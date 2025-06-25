@@ -1,13 +1,19 @@
+# llm:
+#   provider: gigachat
+#   model_name: GigaChat-2-Max
+#   verify_ssl: false
+#   profanity_check: false
+#   scope: GIGACHAT_API_CORP
+#   timeout: 600
+
 llm:
-  provider: gigachat
-  model_name: GigaChat-2-Max
-  verify_ssl: false
-  profanity_check: false
-  scope: GIGACHAT_API_CORP
+  provider: openai
+  model_name: gpt-4o
+  base_url: " "
 
 langfuse:
-  host: " " # add your adress 
-  user: " " # add your name of user
+  host: " "
+  user: " "
 
 asr:
   chunk_size: 4000
@@ -15,9 +21,13 @@ asr:
   sampling_rate: 16000
 
 general:
-  max_improvements: 5
-  recursion_limit: 5
+  max_improvements: 2
+  recursion_limit: 50
   max_code_execution_time: 3000
+  metric: "ROC-AUC"
+  dataset: "employee_promotion"
+  word_font: 16 
+  language: en
 
 model_overrides:
   llm_code_generator_agent:

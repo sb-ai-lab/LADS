@@ -30,9 +30,10 @@ CODE_EXECUTOR = "code_executor"
 TASK_VALIDATOR = "task_validator"
 CODE_IMPROVEMENT_AGENT = "code_improvement_agent"
 ANSWER_GENERATOR = "answer_generator"
-HUMAN_EXPLANATION = "human_explanation"
-TASK_VALIDATOR_EXPLANATION = "task_validator_explanation"
-CODE_IMPROVEMENT_EXPLANATION = "code_improvement_explanation"
+HUMAN_EXPLANATION = "human_explanation_planning"
+TASK_VALIDATOR_EXPLANATION = "human_explanation_validator"
+CODE_IMPROVEMENT_EXPLANATION = "human_explanation_improvement"
+RESULT_EXPLANATION =  "human_explanation_results"
 FEEDBACK_FOR_CODE_IMPROVEMENT = "feedback_for_code_improvement_agent"
 FEEDBACK_FOR_CODE_RESULTS = "feedback_for_code_results_agent"
 
@@ -44,7 +45,6 @@ FEDOT_CONFIG_GENERATOR_AGENT = "fedot_config_generator"
 CODE_ROUTER = "code_router"
 NO_CODE_AGENT = "no_code_agent"
 RESULT_SUMMARIZATION_AGENT =  "result_summarization_agent"
-RESULT_EXPLANATION =  "result_explanation"
 
 
 ERROR_REGEX = r"(?:" + "|".join([
@@ -56,6 +56,7 @@ ERROR_REGEX = r"(?:" + "|".join([
     r"SyntaxError:",
 ]) + r")"
 
+config = load_config()
 
 def code_generation_retry(state: AgentState) -> str:
     last_message = state['messages'][-1]
@@ -74,7 +75,7 @@ def task_validation_retry(state: AgentState) -> str:
 
 
 def check_number_improvements(state: AgentState) -> str:
-    if state['code_improvement_count'] >= 5:
+    if state['code_improvement_count'] >= config.general.max_improvements:
         return ANSWER_GENERATOR
     return CODE_GENERATOR_AGENT
 
@@ -109,11 +110,10 @@ def graph_builder() -> StateGraph:
     nodes = {
         LIGHTAUTOML_LOCAL_EXECUTOR: execute_lightautoml_locally,
         CODE_EXECUTOR: execute_code_locally,
-        INPUT_NODE: input_node,
-        #FEDOT_CONFIG_GENERATOR_AGENT: fedot_config_generator,
     }
 
     llm_nodes = {
+        INPUT_NODE: input_node,
         AUTOML_ROUTER_AGENT: automl_router,
         LIGHTAUTOML_CONFIG_GENERATOR_AGENT: lightautoml_congig_generator,
         FEDOT_CONFIG_GENERATOR_AGENT: fedot_config_generator,

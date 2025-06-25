@@ -138,15 +138,6 @@ lightautoml_parser_user_prompt: str = """На основании задачи п
 {df_head}
 """
 
-human_explanation_system_prompt: str = """ Ты опытный дата саентист, который понимает как работают модели машиного обучения.
-Твоя задача — объяснить на языке, понятном обычным людям, которые слабо знакомы с машинным обучением. Они могут знать что такое модель, но не знают слово таргет или что означает какая метрика.
-Объясняй кратко, ясно, лаконично и в терминах, которые будет понятны каждому человеку, даже бабушкам или топ-менеджерам компаний!
-"""
-
-human_explanation_user_prompt: str = """Это текст который тебе нужно объяснить:
-{text}
-"""
-
 no_code_system_prompt: str = """ Ты опытный дата сайентист и аналитик, который понимает данные и бизнес. 
 Отвечайте на вопросы четко и кратко, на языке, понятном неспециалисту!
 """
@@ -185,9 +176,9 @@ result_summarization_system_prompt: str = """
 ...
 - метрика_n: результат_метрик
 
-метрика_i - могут быть: ROC_AUC, F1, RMSE, ACCURACY, PRECISION, RECALL, ... 
-метрики всегда пиши так: ROC_AUC, F1, RMSE, ACCURACY, PRECISION, RECALL, ...!
-и возвращай - (имя_модели) ROC_AUC: результат
+Метрики могут быть: ROC-AUC, F1, RMSE, ACCURACY, PRECISION, RECALL, ... 
+метрики всегда пиши так: ROC-AUC, F1, RMSE, ACCURACY, PRECISION, RECALL, ...!
+и возвращай - (имя_модели) метрика: результат
 """
 
 result_summarization_user_prompt: str = """На основании кода и результата:
@@ -213,16 +204,67 @@ fedot_parser_system_prompt: str = """Ты опытный дата саентис
 ...
 - метрика_n: результат_метрик
 
-Метрики могут быть: ROC_AUC, F1, RMSE, ACCURACY, PRECISION, RECALL, ... 
-метрики всегда пиши так: ROC_AUC, F1, RMSE, ACCURACY, PRECISION, RECALL, ...!
-и возвращай - (имя_модели) ROC_AUC: результат
+Метрики могут быть: ROC-AUC, F1, RMSE, ACCURACY, PRECISION, RECALL, ... 
+метрики всегда пиши так: ROC-AUC, F1, RMSE, ACCURACY, PRECISION, RECALL, ...!
+и возвращай - (имя_модели) метрика: результат
 """
 
 fedot_parser_user_prompt: str = """На основании результатов подвести итог описани:
 Результаты: {results}
 """
 
+human_explanation_system_prompt: str = """ Ты опытный дата саентист, который понимает как работают модели машиного обучения.
+Твоя задача — объяснить на языке, понятном обычным людям, которые слабо знакомы с машинным обучением. Они могут знать что такое модель, но не знают слово таргет или что означает какая метрика.
+Объясняй кратко, ясно, лаконично и в терминах, которые будет понятны каждому человеку, даже бабушкам или топ-менеджерам компаний!
+"""
 
+human_explanation_planning_user_prompt: str = """Это текст который тебе нужно объяснить:
+{text}
+
+Объясни таким образом, что сначала говориш:
+Это план решения задачи, а потом перечислишь этапы без объяснений! 
+Не объясняй этапы, только напиши максимум в 5 словах!
+Выдели жирным шрифтом все шаги и важные слова!
+"""
+
+human_explanation_results_user_prompt: str = """Это текст который тебе нужно объяснить:
+{text}
+Объясни это так:
+сначала говори, какие модели использовались для решения этой задачи (жирным шрифтом выделите все модели), а затем говори какие метрики получились (жирным шрифтом выделите все метрики).
+Не объясняй модели и метрики! 
+"""
+
+human_explanation_valid_user_prompt: str = """
+Только скажи, что агент успешно построил модели и агент считает, что результаты достаточно хороши!
+Выдели жирным шрифтом важные слова!
+"""
+
+
+human_explanation_improvement_user_prompt: str = """Это текст который тебе нужно объяснить:
+{text}
+
+Объясни это так:
+- сначала просто скажи какая предыдущая модель использовалась,
+- затем кратко в одном предложении объясни почему результаты этой модели неудовлетворительны,
+- в конце кратко в двух предложениях объясни как можно улучшить эту модель.
+
+Выдели жирным шрифтом важные слова!
+Пояснения пиши в тезисах!
+"""
+
+translator_system_prompt: str = """
+You are an experienced translator from Russian and English languages.
+Your task is to translate the given text from English to Russian and from Russian to English.
+Simply translate the text without additional explanations!
+Do not translate common words in Russian, such as the name of metrics and the name of models. 
+Do not translate words: YES, NO, FEDOT and LAMA!
+Just translate text! 
+Do not translate code!
+"""
+
+translator_user_prompt: str = """Translate this text:
+{text}
+"""
 
 GIGACHAT_PROMPTS: Dict[str, Dict[str, str]] = {
     "code_generator": {
@@ -257,10 +299,6 @@ GIGACHAT_PROMPTS: Dict[str, Dict[str, str]] = {
         "system": lightautoml_parser_system_prompt,
         "user": lightautoml_parser_user_prompt
     },
-    "human_explanation": {
-        "system": human_explanation_system_prompt,
-        "user": human_explanation_user_prompt
-    },
     "code_router": {
         "system": code_router_system_prompt,
         "user": code_router_user_prompt
@@ -277,6 +315,27 @@ GIGACHAT_PROMPTS: Dict[str, Dict[str, str]] = {
         "system": fedot_parser_system_prompt,
         "user": fedot_parser_user_prompt
     },
+    "human_explanation_planning": {
+        "system": human_explanation_system_prompt,
+        "user": human_explanation_planning_user_prompt
+    },
+    "human_explanation_results": {
+        "system": human_explanation_system_prompt,
+        "user": human_explanation_results_user_prompt
+    },
+    "human_explanation_validator": {
+        "system": human_explanation_system_prompt,
+        "user": human_explanation_valid_user_prompt
+    },
+    "human_explanation_improvement": {
+        "system": human_explanation_system_prompt,
+        "user": human_explanation_improvement_user_prompt
+    },
+    "translator": {
+        "system": translator_system_prompt,
+        "user": translator_user_prompt
+    },
+
 }
 
 

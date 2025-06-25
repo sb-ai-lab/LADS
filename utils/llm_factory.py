@@ -13,7 +13,7 @@ def create_llm(node_name, config):
             scope=llm_cfg.scope,
             verify_ssl_certs=llm_cfg.verify_ssl,
             profanity_check=llm_cfg.profanity_check,
-            timeout=600
+            timeout=llm_cfg.timeout 
         )
     if llm_cfg.provider == "openai":
         return ChatOpenAI(

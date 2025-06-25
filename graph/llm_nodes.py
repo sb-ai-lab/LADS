@@ -7,10 +7,13 @@ from langchain_core.messages import AIMessage
 from graph.state import AgentState
 from graph.prompts import load_prompt
 from graph.prompts import GIGACHAT_PROMPTS
-
+from utils.config.loader import load_config
+from utils.llm_factory import create_llm
 
 from fedotllm.llm import AIInference
 from fedotllm.main import FedotAI
+
+config = load_config()
 
 PYTHON_REGEX = r"```python-execute(.+?)```"
 
@@ -42,12 +45,29 @@ def find_message_with_code(state: AgentState):
     return extracted_code
 
 
+def translate_text(current_node, text):
+    llm = create_llm(current_node, config)
+    prompt_template = load_prompt('translator')
+    chain = prompt_template | llm
+    query = chain.invoke({"text": text})
+    message = query.content
+    
+    return message
+
 
 # Agent
 
 
-def input_node(state: AgentState) -> AgentState:
-    state['task'] = state['messages'][-1].content
+def input_node(state: AgentState, llm) -> AgentState:
+    
+    if config.general.language == 'en':
+        prompt_template = load_prompt('translator')
+        chain = prompt_template | llm
+        query = chain.invoke({"text": state['messages'][-1].content})
+        state['task'] = query.content
+    else:
+        state['task'] = state['messages'][-1].content
+    
     default_state = {
         'code_for_test': [],
         'feedback': [],
@@ -158,7 +178,7 @@ def fedot_config_generator(state: AgentState, llm) -> str:
 
     # Extract the fedotllm agent message for Code interpretation
     fedotllm_message = output['messages'][-1].content if len(output['messages']) > 1 else "No fedotllm message available"
-    
+
     current_understanding = state.get('human_understanding', [])
     updated_understanding = current_understanding + [f"**FedotLLM Agent Report:**\n{fedotllm_message}"]
 
@@ -170,10 +190,17 @@ def fedot_config_generator(state: AgentState, llm) -> str:
 
 
 def human_explanation_agent(state: AgentState, llm):
-
-    prompt_template = load_prompt('human_explanation')
+    
+    if state['current_node'] == 'rephraser_agent':
+        prompt_template = load_prompt('human_explanation_planning')
+    elif state['current_node'] == 'task_validator':
+        prompt_template = load_prompt('human_explanation_validator')
+    elif state['current_node'] == 'code_improvement_agent':
+        prompt_template = load_prompt('human_explanation_improvement')
+    elif state['current_node'] == 'result_summarization_agent':
+        prompt_template = load_prompt('human_explanation_results')
+    
     chain = prompt_template | llm
-
     last_message = state['messages'][-1].content
     response = chain.invoke({"text": last_message, "history": state['messages']})
 
