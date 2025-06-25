@@ -47,6 +47,7 @@ class LLMConfig(SecretInjectableModel):
     verify_ssl: bool = False
     profanity_check: bool = True
     scope: str = "GIGACHAT_API_CORP"
+    timeout: Optional[int] = None
     base_url: Optional[str] = None
     token: Optional[SecretStr] = Field(
         None, 
@@ -75,6 +76,11 @@ class AgentConfig(SecretInjectableModel):
     max_improvements: int = 5
     recursion_limit: int = 1000
     max_code_execution_time: int = 3000
+    metric: str = "ROC-AUC"
+    dataset: str = None
+    word_font: int = 16 
+    language: str = "ru"
+
     # use_e2b: bool = False
     e2b_token: Optional[SecretStr] = Field(None, json_schema_extra={"metadata": {"secret_source": "E2B_API_KEY"}})
 
