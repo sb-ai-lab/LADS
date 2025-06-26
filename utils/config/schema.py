@@ -80,11 +80,11 @@ class AgentConfig(SecretInjectableModel):
 
 
 class FedotConfig(SecretInjectableModel):
-    provider: Literal["openai"] = "gigachat"
+    provider: str = "openai"
     model_name: str = "gpt-4o"
     base_url: Optional[str] = None
-    automl: str = "Fedot"
     fix_tries: int = 2
+    predictor_init_kwargs: Dict[str, Any] = Field(default_factory=dict)
 
 
 class SecretsConfig(BaseSettings):

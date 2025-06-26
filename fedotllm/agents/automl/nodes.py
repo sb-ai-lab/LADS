@@ -108,10 +108,11 @@ def insert_templates(state: AutoMLAgentState):
             "fedot_train.py": {
                 "params": {
                     "problem": str(fedot_config.problem),
-                    "timeout": 1.0,
+                    "timeout": fedot_config.timeout,
                     "cv_folds": fedot_config.cv_folds,
                     "preset": f"'{fedot_config.preset.value}'",
                     "metric": f"'{fedot_config.metric.value}'",
+                    **load_config().fedot.predictor_init_kwargs
                 }
             },
             "fedot_evaluate.py": {

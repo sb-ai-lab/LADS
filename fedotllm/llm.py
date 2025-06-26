@@ -32,16 +32,19 @@ class AIInference:
         self,
         api_key: str | None = None,
         base_url: str | None = None,
+        provider: str | None = None,
         model: str | None = None,
     ):
         settings = load_config()
         self.base_url = base_url or settings.fedot.base_url
         self.model = model or settings.fedot.model_name
         self.api_key = api_key or os.getenv("OPENAI_API_KEY")
-
+        self.provider = provider or settings.fedot.provider
+        if self.provider:
+            self.model = f"{self.provider}/{self.model}"
         if not self.api_key:
             raise Exception(
-                "API key not provided and FEDOTLLM_LLM_API_KEY environment variable not set"
+                "API key not provided and OPENAI_API_KEY environment variable not set"
             )
 
         self.completion_params = {

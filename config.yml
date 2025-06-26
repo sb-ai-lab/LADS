@@ -29,6 +29,14 @@ general:
   word_font: 16 
   language: en
 
+fedot:
+  provider: gemini
+  model_name: gemini-2.0-flash
+  base_url:
+  fix_tries: 2
+  predictor_init_kwargs:
+    timeout: 5.0
+
 model_overrides:
   llm_code_generator_agent:
     provider: gigachat
