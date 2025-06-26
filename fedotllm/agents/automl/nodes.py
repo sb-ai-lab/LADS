@@ -22,7 +22,7 @@ from fedotllm.enviroments import (
 )
 from fedotllm.llm import AIInference
 from fedotllm.log import logger
-from fedotllm.settings.config_loader import get_settings
+from utils.config.loader import load_config
 
 PREDICT_METHOD_MAP = {
     "predict": "predict(features=input_data)",
@@ -108,10 +108,11 @@ def insert_templates(state: AutoMLAgentState):
             "fedot_train.py": {
                 "params": {
                     "problem": str(fedot_config.problem),
-                    "timeout": 1.0,
+                    "timeout": fedot_config.timeout,
                     "cv_folds": fedot_config.cv_folds,
                     "preset": f"'{fedot_config.preset.value}'",
                     "metric": f"'{fedot_config.metric.value}'",
+                    **load_config().fedot.predictor_init_kwargs
                 }
             },
             "fedot_evaluate.py": {
@@ -169,10 +170,10 @@ def evaluate(state: AutoMLAgentState, workspace: Path):
 def if_bug(state: AutoMLAgentState):
     if (
         state["observation"].error
-        and state["fix_attempts"] < get_settings().config.fix_tries
+        and state["fix_attempts"] < load_config().fedot.fix_tries
     ):
         return True
-    if state["fix_attempts"] >= get_settings().config.fix_tries:
+    if state["fix_attempts"] >= load_config().fedot.fix_tries:
         logger.error("Too many fix tries")
     return False
 

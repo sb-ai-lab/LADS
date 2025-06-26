@@ -1,5 +1,0 @@
-[config]
-model = "gpt-4o-mini"
-base_url = " "
-automl = "Fedot"
-fix_tries = 2
