@@ -3,7 +3,7 @@ import sys
 import logging
 import streamlit as st
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'utils', 'salute_speech'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'utils'))
 
 from app_components.session_state import initialize_session_state
 from app_components.agent_handler import initialize_services
