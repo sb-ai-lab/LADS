@@ -5,7 +5,6 @@ from typing import Dict, Any, List, Optional
 
 from .agent_handler import stream_agent_response_for_frontend
 from .data_handlers import load_data, save_file_to_disk
-from .media_utils import handle_audio_input
 from .session_state import create_new_conversation
 from .data_handlers import SUPPORTED_FILE_TYPES
 from utils.config.loader import load_config
@@ -182,12 +181,6 @@ def setup_chat_placeholders():
     return user_message_placeholder, status_box_placeholder, human_pipeline_content_placeholder
 
 
-def handle_audio_input_fragment():
-    audio_value = st.audio_input("Record a voice message", label_visibility='hidden')
-
-    if audio_value is not None:
-        transcribed_text = handle_audio_input(audio_value)
-        st.session_state.transcribed_text = transcribed_text
 
 
 def process_agent_events(status_placeholder, pipeline_placeholder):
@@ -275,7 +268,6 @@ def cleanup_and_rerun(user_message_placeholder, status_placeholder, pipeline_pla
 def chat_input_fragment():
     user_message_placeholder, status_box_placeholder, human_pipeline_content_placeholder = setup_chat_placeholders()
 
-    handle_audio_input_fragment()
 
     with st.form("chat_form", clear_on_submit=True):
         default_input = st.session_state.get("transcribed_text", "")

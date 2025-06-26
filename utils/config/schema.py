@@ -65,12 +65,6 @@ class LangfuseConfig(SecretInjectableModel):
     secret_key: Optional[SecretStr] = Field(None, json_schema_extra={"metadata": {"secret_source": "LANGFUSE_SECRET_KEY"}})
 
 
-class ASRConfig(SecretInjectableModel):
-    chunk_size: int = 4000
-    sleep_time: float = 0.1
-    sampling_rate: int = 16000
-    token: Optional[SecretStr] = Field(None, json_schema_extra={"metadata": {"secret_source": "SALUTE_API_KEY"}})
-
 
 class AgentConfig(SecretInjectableModel):
     max_improvements: int = 5
@@ -99,7 +93,6 @@ class SecretsConfig(BaseSettings):
 class AppConfig(SecretInjectableModel):
     llm: LLMConfig
     langfuse: Optional[LangfuseConfig] = None
-    asr: ASRConfig
     general: AgentConfig
 
     secrets: SecretsConfig
@@ -108,7 +101,6 @@ class AppConfig(SecretInjectableModel):
 
     def inject_all_secrets(self):
         self.llm = self.llm.inject_secrets(self.secrets, context=self.llm.model_dump())
-        self.asr = self.asr.inject_secrets(self.secrets)
         if self.langfuse:
             self.langfuse = self.langfuse.inject_secrets(self.secrets)
         if self.model_overrides:
