@@ -8,7 +8,7 @@ from tenacity import retry, stop_after_attempt, wait_exponential
 from fedotllm import prompts
 from fedotllm.agents.utils import parse_json
 from fedotllm.log import logger
-from fedotllm.settings.config_loader import get_settings
+from utils.config.loader import load_config
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -34,9 +34,9 @@ class AIInference:
         base_url: str | None = None,
         model: str | None = None,
     ):
-        settings = get_settings()
-        self.base_url = base_url or settings.get("config.base_url")
-        self.model = model or settings.get("config.model")
+        settings = load_config()
+        self.base_url = base_url or settings.fedot.base_url
+        self.model = model or settings.fedot.model_name
         self.api_key = api_key or os.getenv("OPENAI_API_KEY")
 
         if not self.api_key:
