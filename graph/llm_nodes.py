@@ -2,18 +2,12 @@ import re
 import os
 import shutil
 
-from langchain_core.messages import AIMessage
-
 from graph.state import AgentState
 from graph.prompts import load_prompt
-from graph.prompts import GIGACHAT_PROMPTS
-from utils.config.loader import load_config
-from utils.llm_factory import create_llm
 
 from fedotllm.llm import AIInference
 from fedotllm.main import FedotAI
 
-config = load_config()
 
 PYTHON_REGEX = r"```python-execute(.+?)```"
 
@@ -45,28 +39,13 @@ def find_message_with_code(state: AgentState):
     return extracted_code
 
 
-def translate_text(current_node, text):
-    llm = create_llm(current_node, config)
-    prompt_template = load_prompt('translator')
-    chain = prompt_template | llm
-    query = chain.invoke({"text": text})
-    message = query.content
-    
-    return message
-
 
 # Agent
 
 
 def input_node(state: AgentState, llm) -> AgentState:
     
-    if config.general.language == 'en':
-        prompt_template = load_prompt('translator')
-        chain = prompt_template | llm
-        query = chain.invoke({"text": state['messages'][-1].content})
-        state['task'] = query.content
-    else:
-        state['task'] = state['messages'][-1].content
+    state['task'] = state['messages'][-1].content
     
     default_state = {
         'code_for_test': [],
@@ -77,7 +56,7 @@ def input_node(state: AgentState, llm) -> AgentState:
         'generated_code': [],
         'code_results': [],
         'feedback': [],
-        'rephrased_plan': "",
+        'rephrased_plan': [],
     }
 
     for key, value in default_state.items():
@@ -94,7 +73,7 @@ def rephraser_agent(state: AgentState, llm):
     chain = prompt_template | llm
     message = chain.invoke({"user_input": user_input})
     message.content = '\n' + message.content
-    state['rephrased_plan'] = message.content.strip()
+    state['rephrased_plan'].append(message.content.strip())
     return {"messages": message}
 
 
@@ -190,7 +169,7 @@ def fedot_config_generator(state: AgentState, llm) -> str:
 
 
 def human_explanation_agent(state: AgentState, llm):
-    
+
     if state['current_node'] == 'rephraser_agent':
         prompt_template = load_prompt('human_explanation_planning')
     elif state['current_node'] == 'task_validator':
@@ -230,7 +209,7 @@ def validate_solution(state: AgentState, llm):
 
     prompt_template = load_prompt('validate_solution')
     chain = prompt_template | llm
-    message = chain.invoke({"user_input": user_input, "solution": state['messages'][-2].content, "rephrased_plan": state['rephrased_plan']})
+    message = chain.invoke({"user_input": user_input, "solution": state['messages'][-2].content, "rephrased_plan": state['rephrased_plan'][-1]})
 
     return {"messages": message}
 

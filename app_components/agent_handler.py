@@ -10,7 +10,6 @@ from e2b_code_interpreter import Sandbox
 from langfuse.callback import CallbackHandler
 from graph.graph import graph_builder
 from utils.config.loader import load_config
-from graph.llm_nodes import translate_text
 
 
 logger = logging.getLogger(__name__)
@@ -118,10 +117,7 @@ def stream_agent_response_for_frontend():
                                     
                     if hu_content_str not in st.session_state.shown_human_messages:
                         st.session_state.shown_human_messages.add(hu_content_str)
-                        if config.general.language == 'en':
-                            human_content = translate_text(current_node, hu_content_str)
-                        else:
-                            human_content = hu_content_str
+                        human_content = hu_content_str
                         break
 
             if current_node == "result_summarization_agent" or current_node == "fedot_config_generator":
@@ -133,10 +129,7 @@ def stream_agent_response_for_frontend():
                         metric = float(match)
                         st.session_state.extract_metric.append(metric)
             
-            if config.general.language == 'en' and current_node not in (None, 'input_node', 'code_router', 'automl_router', 'task_validator'):
-                message = translate_text(current_node, values["messages"][-1].content)
-            else:
-                message = values["messages"][-1].content
+            message = values["messages"][-1].content
 
             if current_node is None:
                 continue
