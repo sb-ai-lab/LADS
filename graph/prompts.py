@@ -128,13 +128,12 @@ lightautoml_parser_system_prompt_ru: str = """Ты опытный разрабо
 Твоя задача это составить конфиг для обучения модели машинного обучения на основе входных данных.
 Для задачи регрессии используй метрику (task_metric) "r2-score" и тип задачи (task_type) "reg"
 Для задачи классификации используй метрику (task_metric) "auc" и тип задачи (task_type) "binary"
-Отвечай всегда только в формате:
+
+Отвечай всегда только в JSON формате:
 ```json
-{
-    "task_type": "",
-    "target": "",
-    "task_metric": ""
-}
+"task_type": "",
+"target": "",
+"task_metric": ""
 ```
 """
 
@@ -384,14 +383,12 @@ lightautoml_parser_system_prompt_en: str = """You are an experienced machine lea
 Your task is to create a configuration for training a machine learning model based on the input data.
 For a regression task, use the metric (task_metric) "r2-score" and the task type (task_type) "reg".
 For a classification task, use the metric (task_metric) "auc" and the task type (task_type) "binary".
-Always respond only in the format:
-```json
-{
-    "task_type": "",
-    "target": "",
-    "task_metric": ""
-}
-```
+
+Always respond only in the JSON format:
+"task_type": "",
+"target": "",
+"task_metric": ""
+
 """
 
 lightautoml_parser_user_prompt_en: str = """Based on the user's task, column names, several rows from the dataset, and the file name, create a configuration for training.
