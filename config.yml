@@ -35,7 +35,7 @@ fedot:
   base_url:
   fix_tries: 2
   templates:
-    code: "skeleton-complex.py"
+    code: "skeleton-simple.py"
     train: "fedot_train.py"
     evaluate: "fedot_evaluate.py"
     predict: "fedot_predict.py"
