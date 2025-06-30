@@ -34,8 +34,13 @@ fedot:
   model_name: gemini-2.0-flash
   base_url:
   fix_tries: 2
+  templates:
+    code: "skeleton-complex.py"
+    train: "fedot_train.py"
+    evaluate: "fedot_evaluate.py"
+    predict: "fedot_predict.py"
   predictor_init_kwargs:
-    timeout: 5.0
+    timeout: 1.0
 
 model_overrides:
   llm_code_generator_agent:

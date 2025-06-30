@@ -75,14 +75,14 @@ def select_skeleton(state: AutoMLAgentState, dataset: Dataset, workspace: Path):
     if predict_method is None:
         raise ValueError(f"Unknown predict method: {fedot_config.predict_method}")
 
-    skeleton = load_template("skeleton")
-    skeleton = render_template(
-        template=skeleton,
+    code_template = load_template(load_config().fedot.templates.code)
+    code_template = render_template(
+        template=code_template,
         dataset_path=dataset.path,
         work_dir_path=workspace.resolve(),
     )
 
-    return Command(update={"skeleton": skeleton})
+    return Command(update={"skeleton": code_template})
 
 
 def generate_code(state: AutoMLAgentState, inference: AIInference, dataset: Dataset):
@@ -101,27 +101,28 @@ def insert_templates(state: AutoMLAgentState):
     logger.info("Running insert templates")
     code = state["raw_code"]
     fedot_config = state["fedot_config"]
+    config = load_config()
     predict_method = PREDICT_METHOD_MAP.get(fedot_config.predict_method)
 
     try:
         templates = {
-            "fedot_train.py": {
+            config.fedot.templates.train: {
                 "params": {
                     "problem": str(fedot_config.problem),
                     "timeout": fedot_config.timeout,
                     "cv_folds": fedot_config.cv_folds,
                     "preset": f"'{fedot_config.preset.value}'",
                     "metric": f"'{fedot_config.metric.value}'",
-                    **load_config().fedot.predictor_init_kwargs
+                    **load_config().fedot.predictor_init_kwargs,
                 }
             },
-            "fedot_evaluate.py": {
+            config.fedot.templates.evaluate: {
                 "params": {
                     "problem": str(fedot_config.problem),
                     "predict_method": predict_method,
                 }
             },
-            "fedot_predict.py": {
+            config.fedot.templates.predict: {
                 "params": {
                     "problem": str(fedot_config.problem),
                     "predict_method": predict_method,

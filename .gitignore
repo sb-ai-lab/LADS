@@ -178,3 +178,8 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+# Output files
+output/
+utils/salute_speech/
+benchmark/benchmark_results.csv
