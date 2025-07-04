@@ -15,6 +15,9 @@
 
 **LightAutoDS-Tab**, a multi-AutoML agentic system for tasks with tabular data, which combines an LLM-based code generation with several AutoML tools.
 
+## ✨ Demo
+You can try the demo of LightAutoDS-Tab on [https://ds-agent.ailabtools.org/](https://ds-agent.ailabtools.org/).
+
 ## 🚀 Quick Start
 
 **Step 1: Clone the repository**
@@ -60,7 +63,3 @@ Your application will be hosted on [http://localhost:8501](http://localhost:8501
 ## 📜 License
 
 Distributed under the BSD 3-Clause License. See [`LICENSE`](./LICENSE) for more information.
-
-## 🙏 Acknowledgements
-
-This work is supported by the Ministry of Economic Development of the Russian Federation (IGK 000000C313925P4C0002), agreement No. 139-15-2025-010.
