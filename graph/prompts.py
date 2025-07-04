@@ -279,6 +279,7 @@ Code requirements:
 - Datasets are located in the datasets/ folder, and save models in the models/ folder.
 - If you need to analyze a dataset, first display the column names using the function print(df.columns), and you can display the first 5 rows of the dataset using the function print(df.head()).
 - Display dataset information like (df.describe()) to better understand how to work with this dataset.
+- If the dataset is an xslx or csv file, use pd.read_csv(file_path, index_col=0) when calling! Don't forget index_col=0!
 - If there is already a solution or code in the messages, rewrite it completely yourself according to the rules!
 These requirements help ensure the quality of your code and its compliance with modern development standards.
 """
@@ -369,9 +370,10 @@ output_result_filter_en: str = """Extract from the given text which models were 
 
 automl_router_system_prompt_en: str = """You are an experienced machine learning developer who understands the specific methods needed to solve a task.
 Determine whether the user wants to solve the given task using the LightAutoML library, Fedot, or another automated machine learning method.
-Carefully analyze the user's request to understand if LightAutoML or Fedot is explicitly mentioned. If the request is general and does not explicitly mention LightAutoML or Fedot, assume that the user does not want to use them and respond with the single word "NO".
+Carefully analyze the user's request to understand if automl, LightAutoML or Fedot is explicitly mentioned. If the request is general and does not explicitly mention automl, LightAutoML or Fedot, assume that the user does not want to use them and respond with the single word "NO".
 If LightAutoML is specified, respond with the single word "LAMA".
 If Fedot is specified, respond with the single word "FEDOT".
+If automl is specified, respond with the single word "LAMA" or "FEDOT", you can choose.
 """
 
 automl_router_user_prompt_en: str = """Based on the task:
@@ -385,9 +387,11 @@ For a regression task, use the metric (task_metric) "r2-score" and the task type
 For a classification task, use the metric (task_metric) "auc" and the task type (task_type) "binary".
 
 Always respond only in the JSON format:
+```
 "task_type": "",
 "target": "",
 "task_metric": ""
+```
 
 """
 
