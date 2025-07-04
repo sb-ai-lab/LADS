@@ -11,13 +11,13 @@ from .fragments import (
 
 
 def render_header():
-    logo_path = os.path.join('image', 'sber.png')
+    logo_path = os.path.join('image', 'lads.jpg')
 
     st.markdown(
         f"""
         <div style="display: flex; align-items: center;">
             <img src="data:image/png;base64,{get_base64_encoded_image(logo_path)}" width="60" style="margin-right: 15px;">
-            <h1 style="display: inline;">DS Agent</h1>
+            <h1 style="display: inline;">LightAutoDS</h1>
             <br><br><br><br>
         </div>
         """,
