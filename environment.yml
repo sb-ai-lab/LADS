@@ -1,4 +1,4 @@
-name: code-actor
+name: LightAutoDS
 channels:
   - defaults
   - https://repo.anaconda.com/pkgs/main
