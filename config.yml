@@ -9,11 +9,11 @@
 llm:
   provider: openai
   model_name: gpt-4o
-  base_url: " "
+  base_url: # Add url
 
 langfuse:
-  host: " "
-  user: " "
+  host: # Add host
+  user: # Add user
 
 asr:
   chunk_size: 4000
@@ -32,7 +32,7 @@ general:
 fedot:
   provider: gemini
   model_name: gemini-2.0-flash
-  base_url:
+  base_url: # Add url
   fix_tries: 2
   templates:
     code: "skeleton-simple.py"
