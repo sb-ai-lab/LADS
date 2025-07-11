@@ -116,7 +116,7 @@ If automl is specified, respond with the single word "LAMA" or "FEDOT", you can 
 
 automl_router_user_prompt: str = """Based on the task:
 ```{task}```
-determine whether to use LightAutoML or FEDOT to solve it
+determine whether to use LightAutoML or FEDOT to solve it, othervise return NO!
 """
 
 lightautoml_parser_system_prompt: str = """You are an experienced machine learning engineer who formulates tasks in machine learning terms.
