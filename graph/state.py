@@ -17,8 +17,15 @@ class AgentState(TypedDict):
     code_improvement_count: int
     current_node: str
     feedback: List[str]
-    generated_code: List[str]
+    generated_code: str
     rephrased_plan: str
-    code_results: List[str]
+    code_results: str
+    lama: bool
+    test_split: bool
     improvements_code: List[str]
     human_understanding: List[str]
+    code_generation_config: str
+    train_code: str
+    test_code: str
+    test_df: Optional[pd.DataFrame]
+    test_df_name: str

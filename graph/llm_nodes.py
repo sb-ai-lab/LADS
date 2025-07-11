@@ -43,20 +43,21 @@ def find_message_with_code(state: AgentState):
 # Agent
 
 
-def input_node(state: AgentState, llm) -> AgentState:
-    
+def input_node(state: AgentState) -> AgentState:
     state['task'] = state['messages'][-1].content
-    
     default_state = {
         'code_for_test': [],
         'feedback': [],
         'code_improvement_count': 0,
         'improvements_code': [],
         'human_understanding': [],
-        'generated_code': [],
-        'code_results': [],
-        'feedback': [],
-        'rephrased_plan': [],
+        'generated_code': "",
+        'code_results': "",
+        'rephrased_plan': "",
+        'lama': False,
+        "test_split": False,
+        "test_df": None,
+        "test_df_name": "",
     }
 
     for key, value in default_state.items():
@@ -73,7 +74,7 @@ def rephraser_agent(state: AgentState, llm):
     chain = prompt_template | llm
     message = chain.invoke({"user_input": user_input})
     message.content = '\n' + message.content
-    state['rephrased_plan'].append(message.content.strip())
+    state['rephrased_plan'] = message.content.strip()
     return {"messages": message}
 
 
@@ -126,7 +127,7 @@ def automl_router(state: AgentState, llm):
     return {"messages": response}
 
 
-def lightautoml_congig_generator(state: AgentState, llm):
+def lightautoml_generator(state: AgentState, llm):
 
     prompt_template = load_prompt('lightautoml_parser')
     chain = prompt_template | llm
@@ -136,10 +137,11 @@ def lightautoml_congig_generator(state: AgentState, llm):
         "df_columns": state['df'].columns.tolist(),
         "df_head": state['df'].head().to_string()
     })
-    return {"messages": response}
+    response.content = '\n' + response.content.strip()
+    return {"messages": response, 'lama': True}
 
 
-def fedot_config_generator(state: AgentState, llm) -> str:
+def fedot_generator(state: AgentState, llm) -> str:
     
     output_path = os.path.join(os.getcwd(), 'output')
     if os.path.exists(output_path):
@@ -170,16 +172,16 @@ def fedot_config_generator(state: AgentState, llm) -> str:
 
 def human_explanation_agent(state: AgentState, llm):
 
-    if state['current_node'] == 'rephraser_agent':
-        prompt_template = load_prompt('human_explanation_planning')
-    elif state['current_node'] == 'task_validator':
-        prompt_template = load_prompt('human_explanation_validator')
-    elif state['current_node'] == 'code_improvement_agent':
-        prompt_template = load_prompt('human_explanation_improvement')
-    elif state['current_node'] == 'result_summarization_agent':
-        prompt_template = load_prompt('human_explanation_results')
-    
+    human_prompts = {
+        'rephraser_agent': 'human_explanation_planning',
+        'task_validator': 'human_explanation_validator',
+        'code_improvement_agent': 'human_explanation_improvement',
+        'result_summarization_agent': 'human_explanation_results'
+    }
+
+    prompt_template = load_prompt(human_prompts.get(state['current_node'], 'human_explanation'))    
     chain = prompt_template | llm
+
     last_message = state['messages'][-1].content
     response = chain.invoke({"text": last_message, "history": state['messages']})
 
@@ -209,7 +211,10 @@ def validate_solution(state: AgentState, llm):
 
     prompt_template = load_prompt('validate_solution')
     chain = prompt_template | llm
-    message = chain.invoke({"user_input": user_input, "solution": state['messages'][-2].content, "rephrased_plan": state['rephrased_plan'][-1]})
+    solution = "Код:\n```python-execute" + state["generated_code"] + '\n```'
+    solution += "Резульат выполнения кода: " + ''.join(state['code_results'])
+    
+    message = chain.invoke({"user_input": user_input, "solution": solution, "rephrased_plan": state['rephrased_plan']})
 
     return {"messages": message}
 
@@ -251,8 +256,33 @@ def code_improvement_agent(state: AgentState, llm):
     return {"messages": message, "code_improvement_count": state['code_improvement_count']+1, "improvements_code": improvements}
 
 
+def train_inference_split(state: AgentState, llm):
+    prompt_template = load_prompt('train_inference_split')
+    chain = prompt_template | llm
+    response = chain.invoke({"code": state['generated_code'], "train_dataset_name": state['df_name'], "test_dataset_name": state['test_df_name']})
+
+    return {"messages": response, "test_split": True}
+
+
+def check_train_test_inference(state: AgentState, llm):
+    last_message = state['messages'][-1].content
+    promt_template = load_prompt('train_test_checker')
+    chain = promt_template | llm
+    response = chain.invoke({"code_result": last_message, "train_code": state['train_code'], "test_code": state['test_code']})
+
+    return {"messages": response}
+
+
 def final(state: AgentState, llm):
     prompt_message = load_prompt('output_summarization')
     chain = prompt_message | llm
     message = chain.invoke({"task": state['task'], "feedback": state['feedback']})
+    message.content = message.content
+
+    #if state['current_node'] not in ['fedot_config_generator', 'lightautoml_local_executor']:
+    os.makedirs('./code', exist_ok=True)
+    with open('./code/train.py', 'w', encoding='utf-8') as f:
+        f.write(state.get('train_code', ''))
+    with open('./code/test.py', 'w', encoding='utf-8') as f:
+        f.write(state.get('test_code', ''))
     return {"messages": message}
