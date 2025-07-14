@@ -276,10 +276,9 @@ def check_train_test_inference(state: AgentState, llm):
 def final(state: AgentState, llm):
     prompt_message = load_prompt('output_summarization')
     chain = prompt_message | llm
-    message = chain.invoke({"task": state['task'], "feedback": state['feedback']})
+    message = chain.invoke({"task": state['task'], "base": state['human_understanding'][1], "feedback": state['feedback']})
     message.content = message.content
-
-    #if state['current_node'] not in ['fedot_config_generator', 'lightautoml_local_executor']:
+    
     os.makedirs('./code', exist_ok=True)
     with open('./code/train.py', 'w', encoding='utf-8') as f:
         f.write(state.get('train_code', ''))

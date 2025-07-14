@@ -283,9 +283,12 @@ metric_i can be: ROC-AUC, F1, RMSE, ACCURACY, PRECISION, RECALL, ...
 Always write metrics as: ROC-AUC, F1, RMSE, ACCURACY, PRECISION, RECALL, ...!
 """
 
-result_summarization_user_prompt: str = """Based on the code and result:
-```{text}```
-describe which model was used and which metrics were obtained.
+result_summarization_user_prompt: str = """My task sounds like this:
+{task}
+This is the basic result and description of the approach:
+{base}
+These are all the results and descriptions of approaches with code improvement:
+{feedback}
 """
 
 fedot_parser_system_prompt: str = """You are an experienced data scientist who understands how machine learning models work.
