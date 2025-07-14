@@ -65,7 +65,7 @@ def execute_e2b_code(sandbox, code: str) -> str:
     execution = sandbox.run_code(code)
 
     if execution.error:
-        result = e2b_exec_error.fromat(
+        result = e2b_exec_error.format(
             execution_error_traceback=execution.error.traceback
         )
     else:

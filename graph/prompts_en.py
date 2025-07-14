@@ -97,9 +97,10 @@ Describe the final result in detail: how it works, what models were used, what m
 
 output_summarization_user_prompt: str = """My task is:
 {task}
-These are all the results and improvement descriptions:
+This is the basic result and description of the approach:
+{base}
+These are all the results and descriptions of approaches with code improvement:
 {feedback}
-This is what I got after splitting the code into training and inference:
 """
 
 output_result_filter: str = """Extract from the following text which models were used and which metrics were obtained, if mentioned:
@@ -283,12 +284,9 @@ metric_i can be: ROC-AUC, F1, RMSE, ACCURACY, PRECISION, RECALL, ...
 Always write metrics as: ROC-AUC, F1, RMSE, ACCURACY, PRECISION, RECALL, ...!
 """
 
-result_summarization_user_prompt: str = """My task sounds like this:
-{task}
-This is the basic result and description of the approach:
-{base}
-These are all the results and descriptions of approaches with code improvement:
-{feedback}
+result_summarization_user_prompt: str = """Based on the code and result:
+```{text}```
+describe which model was used and which metrics were obtained.
 """
 
 fedot_parser_system_prompt: str = """You are an experienced data scientist who understands how machine learning models work.
