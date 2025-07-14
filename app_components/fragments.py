@@ -1,20 +1,15 @@
 import streamlit as st
 import pandas as pd
-import markdown
 from typing import Dict, Any, List, Optional
 
 from .agent_handler import stream_agent_response_for_frontend
 from .data_handlers import load_data, save_file_to_disk
 from .session_state import create_new_conversation
 from .data_handlers import SUPPORTED_FILE_TYPES
-from utils.config.loader import load_config
-
-config = load_config()
 
 COLUMN_SHAPES = [1, 1]
 BENCHMARK_CSV_PATH = "benchmark/benchmark_results.csv"
-ID = config.general.dataset
-WORDS_FONT = config.general.word_font
+ID = "employee_promotion"
 
 def get_benchmarks_from_csv(benchmark_csv_path, id):
     df = pd.read_csv(benchmark_csv_path)
@@ -37,10 +32,6 @@ def extract_final_response(assistant_message: Dict[str, Any]) -> str:
             return assistant_message.get('content', '')
     else:
         return assistant_message.get('content', '')
-
-
-def convert_markdown_to_html(text):
-    return markdown.markdown(text, extensions=['extra', 'smarty'])
 
 
 def render_status_boxes(
@@ -82,8 +73,6 @@ def render_status_boxes(
                     for msg in valid_human_entries:
                         with st.chat_message("assistant"):
                             st.markdown(msg)
-                            # final_response_html = convert_markdown_to_html(final_response_text)
-                            # st.markdown(f"<div style='font-size:{WORDS_FONT}px;'>{final_response_html}</div>", unsafe_allow_html=True)
 
         elif not (status_placeholder and state == "running"):
             with st.status(interpretation_title, state=state, expanded=expanded):
@@ -91,22 +80,21 @@ def render_status_boxes(
                 for msg in valid_human_entries:
                     with st.chat_message("assistant"):
                         st.markdown(msg)
-                        # final_response_html = convert_markdown_to_html(final_response_text)
-                        # st.markdown(f"<div style='font-size:{WORDS_FONT}px;'>{final_response_html}</div>", unsafe_allow_html=True)
 
 
 @st.fragment
 def file_upload_fragment():
 
-    uploaded_file = st.file_uploader("📥 Upload a file", type=list(SUPPORTED_FILE_TYPES.keys()))
+    train_file = st.file_uploader("📥 Upload training dataset", type=list(SUPPORTED_FILE_TYPES.keys()), key="train_file")
+    test_file = st.file_uploader("📥 Upload test dataset for predictions", type=list(SUPPORTED_FILE_TYPES.keys()), key="test_file")
 
-    if uploaded_file is not None:
+    if train_file is not None:
         try:
             sandbox = st.session_state.get("sandbox", None)
 
-            file_name = uploaded_file.name
+            file_name = train_file.name
             file_type = file_name.split('.')[-1].lower()
-            file_content = uploaded_file.getvalue()
+            file_content = train_file.getvalue()
 
             st.session_state.loading_message = f"Loading {file_name}..."
             status_placeholder = st.empty()
@@ -117,6 +105,7 @@ def file_upload_fragment():
 
             if sandbox is not None:
                 sandbox.files.write(file_name, file_content)
+                save_file_to_disk(df, file_name, file_type)
             else:
                 save_file_to_disk(df, file_name, file_type)
 
@@ -138,6 +127,47 @@ def file_upload_fragment():
     if st.session_state.uploaded_files:
         st.markdown("### Uploaded Files")
         for file_name in st.session_state.uploaded_files:
+            st.text(f"• {file_name}")
+
+    if test_file is not None:
+        try:
+            sandbox = st.session_state.get("sandbox", None)
+
+            file_name = test_file.name
+            file_type = file_name.split('.')[-1].lower()
+            file_content = test_file.getvalue()
+
+            st.session_state.loading_message = f"Loading test dataset {file_name}..."
+            status_placeholder = st.empty()
+            status_placeholder.info(st.session_state.loading_message)
+
+            df = load_data(file_content, file_type)
+            st.write(df.head())
+
+            if sandbox is not None:
+                sandbox.files.write(file_name, file_content)
+                save_file_to_disk(df, file_name, file_type)
+            else:
+                save_file_to_disk(df, file_name, file_type)
+
+            st.session_state.uploaded_test_files[file_name] = {
+                'df': df,
+                'type': file_type,
+                'df_name': file_name
+            }
+
+            st.session_state.test_df_name = file_name
+
+            st.session_state.loading_message = ""
+            status_placeholder.empty()
+            st.success(f"Test file '{file_name}' successfully uploaded!")
+
+        except Exception as e:
+            st.error(f"Error uploading test file: {str(e)}")
+
+    if st.session_state.uploaded_test_files:
+        st.markdown("### Uploaded Test Files")
+        for file_name in st.session_state.uploaded_test_files:
             st.text(f"• {file_name}")
 
 
@@ -245,10 +275,10 @@ def get_table_results():
         ds_agent_result = row['our_data']
 
     data = {
-        'LogisticRegression': row['LogisticRegression'],
+        'Logistic Regression': row['LogisticRegression'],
         'LGBM': row['LGBM'],
         'Tabular NN': row['Tabular NN'],
-        'DS Agent': ds_agent_result,
+        'LADS': ds_agent_result,
     }
 
     if st.session_state.current_node == "no_code_agent":
@@ -321,15 +351,13 @@ def render_conversation(user_message: str, assistant_message: Dict[str, Any], ta
     with st.chat_message("assistant"):
         final_response_text = extract_final_response(assistant_message)
         st.markdown(final_response_text)
-        # final_response_html = convert_markdown_to_html(final_response_text)
-        # st.markdown(f"<div style='font-size:{WORDS_FONT}px;'>{final_response_html}</div>", unsafe_allow_html=True)
     
     with st.container():
         if st.session_state.benchmark_history and table_raw is not None:
             st.markdown("#### Benchmark")
             df = pd.DataFrame([table_raw])
             if st.session_state.benchmark_history[-1] is not None:
-                update_ds_agent_history(BENCHMARK_CSV_PATH, ID, st.session_state.benchmark_history[-1]['DS Agent'])
+                update_ds_agent_history(BENCHMARK_CSV_PATH, ID, st.session_state.benchmark_history[-1]['LADS'])
             st.dataframe(df.style.highlight_max(axis=1, color="#39FF14"), use_container_width=True)
         st.markdown("---")
 

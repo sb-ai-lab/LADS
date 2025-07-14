@@ -9,13 +9,13 @@ from utils.config.loader import load_config
 from e2b_code_interpreter import Sandbox
 from langfuse.callback import CallbackHandler
 from graph.graph import graph_builder
-from utils.config.loader import load_config
+from sklearn.model_selection import train_test_split
+from .data_handlers import save_file_to_disk
 
 
 logger = logging.getLogger(__name__)
-config = load_config()
 
-METRIC = config.general.metric
+METRIC = "ROC-AUC"
 
 def initialize_services():
     if "services_initialized" not in st.session_state:
@@ -83,26 +83,72 @@ def stream_agent_response_for_frontend():
 
     conversation_history = build_conversation_history()
 
+
+    df_name = st.session_state.get("df_name")
+    test_df_name = st.session_state.get("test_df_name")
+    if df_name and df_name in st.session_state.uploaded_files and not test_df_name:
+        full_df = st.session_state.uploaded_files[df_name]["df"]
+        X_train, X_test = train_test_split(full_df, test_size=0.2, random_state=42)
+
+        if "." in df_name:
+            base, ext = df_name.rsplit('.', 1)
+            train_name = f"train.{ext}"
+            test_name = f"test.{ext}"
+        else:
+            train_name = f"train"
+            test_name = f"test"
+
+        st.session_state.uploaded_files[train_name] = {
+            'df': X_train,
+            'type': st.session_state.uploaded_files[df_name]['type'],
+            'df_name': train_name
+        }
+        st.session_state.uploaded_test_files[test_name] = {
+            'df': X_test,
+            'type': st.session_state.uploaded_files[df_name]['type'],
+            'df_name': test_name
+        }
+
+        # Save split datasets to disk
+        file_ext = st.session_state.uploaded_files[df_name]['type']
+        save_file_to_disk(X_train, train_name, file_ext)
+        save_file_to_disk(X_test, test_name, file_ext)
+
+        st.session_state.df_name = train_name
+        st.session_state.test_df_name = test_name
+
     df = None
     df_name = st.session_state.df_name
+    test_df = None
+    test_df_name = st.session_state.get("test_df_name")
+    if test_df_name and test_df_name in st.session_state.uploaded_test_files:
+        test_df = st.session_state.uploaded_test_files[test_df_name]["df"]
     if df_name and df_name in st.session_state.uploaded_files:
         df = st.session_state.uploaded_files[df_name]["df"]
 
     try:
         agent_config = {"recursion_limit": rec_lim}
+
         if langfuse_handler:
             agent_config["callbacks"] = [langfuse_handler]
 
         agent_message = {"messages": conversation_history}
+        agent_message["code_generation_config"] = config.general.code_generation_config
+
         if sandbox:
             agent_message["sandbox"] = sandbox
         if df is not None:
             agent_message["df"] = df
             agent_message["df_name"] = df_name
+        if test_df is not None:
+            agent_message["test_df"] = test_df
+            agent_message["test_df_name"] = test_df_name
 
         for values in agent.stream(agent_message, stream_mode="values", config=agent_config):
             human_content = None
+            current_node = values.get("current_node")
             matches = None
+
 
             hu_list = values.get("human_understanding", [])
             current_node = values.get("current_node")
@@ -114,7 +160,7 @@ def stream_agent_response_for_frontend():
                         hu_content_str = "\n".join(str(item) for item in hu_content)
                     else:
                         hu_content_str = str(hu_content)
-                                    
+
                     if hu_content_str not in st.session_state.shown_human_messages:
                         st.session_state.shown_human_messages.add(hu_content_str)
                         human_content = hu_content_str
@@ -128,13 +174,13 @@ def stream_agent_response_for_frontend():
                 for match in matches:
                         metric = float(match)
                         st.session_state.extract_metric.append(metric)
-            
-            message = values["messages"][-1].content
+
+            message = values["messages"][-1]
 
             if current_node is None:
                 continue
 
-            node_message_content = f"**{current_node}:** {message}"
+            node_message_content = f"**{current_node}:** {message.content}"
 
             yield {
                 "type": "assistant_message_chunk",

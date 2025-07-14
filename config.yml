@@ -15,23 +15,16 @@ langfuse:
   host: # Add host
   user: # Add user
 
-asr:
-  chunk_size: 4000
-  sleep_time: 0.1
-  sampling_rate: 16000
-
 general:
-  max_improvements: 2
+  max_improvements: 5
+  code_generation_config: 'local'
   recursion_limit: 50
   max_code_execution_time: 3000
-  metric: "ROC-AUC"
-  dataset: "employee_promotion"
-  word_font: 16 
-  language: en
+  prompt_language: "en"
 
 fedot:
-  provider: gemini
-  model_name: gemini-2.0-flash
+  provider: openai
+  model_name: gpt-4o
   base_url: # Add url
   fix_tries: 2
   templates:

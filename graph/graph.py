@@ -3,7 +3,7 @@ import re
 from langgraph.graph import END, StateGraph, START
 
 from graph.state import AgentState
-from graph.code_executor_node import execute_code_locally, execute_lightautoml_locally
+from graph.code_executor_node import execute_code, execute_train_test
 from graph.llm_nodes import (
     input_node,
     rephraser_agent,
@@ -11,13 +11,15 @@ from graph.llm_nodes import (
     validate_solution,
     code_improvement_agent,
     automl_router,
-    lightautoml_congig_generator,
+    lightautoml_generator,
     feedback_for_code_improvement_agent,
     human_explanation_agent,
+    train_inference_split,
+    check_train_test_inference,
     code_router,
     no_code_agent,
     result_summarization_agent,
-    fedot_config_generator,
+    fedot_generator,
     final,
 )
 from utils.llm_factory import create_llm
@@ -36,6 +38,9 @@ CODE_IMPROVEMENT_EXPLANATION = "human_explanation_improvement"
 RESULT_EXPLANATION =  "human_explanation_results"
 FEEDBACK_FOR_CODE_IMPROVEMENT = "feedback_for_code_improvement_agent"
 FEEDBACK_FOR_CODE_RESULTS = "feedback_for_code_results_agent"
+TRAIN_INFERENCE_SPLITTER = "train_inference_splitter"
+CHECK_TRAIN_TEST_INFERENCE = "check_train_test_inference"
+EXECUTE_TRAIN_TEST = "execute_train_test"
 
 AUTOML_ROUTER_AGENT = "automl_router"
 LIGHTAUTOML_CONFIG_GENERATOR_AGENT = "lightautoml_config_generator"
@@ -56,7 +61,6 @@ ERROR_REGEX = r"(?:" + "|".join([
     r"SyntaxError:",
 ]) + r")"
 
-config = load_config()
 
 def code_generation_retry(state: AgentState) -> str:
     last_message = state['messages'][-1]
@@ -75,7 +79,7 @@ def task_validation_retry(state: AgentState) -> str:
 
 
 def check_number_improvements(state: AgentState) -> str:
-    if state['code_improvement_count'] >= config.general.max_improvements:
+    if state['code_improvement_count'] >= 3:
         return ANSWER_GENERATOR
     return CODE_GENERATOR_AGENT
 
@@ -95,6 +99,12 @@ def automl_router_func(state: AgentState) -> str:
     else:
         return INPUT_AGENT
 
+def train_inference_router(state: AgentState) -> str:
+    last_message = state['messages'][-1].content
+    if "VALID" in last_message:
+        return ANSWER_GENERATOR
+    else:
+        return EXECUTE_TRAIN_TEST
 
 def add_node_name(state: AgentState, node_name: str) -> AgentState:
     state['current_node'] = node_name
@@ -108,15 +118,16 @@ def graph_builder() -> StateGraph:
     workflow = StateGraph(AgentState)
 
     nodes = {
-        LIGHTAUTOML_LOCAL_EXECUTOR: execute_lightautoml_locally,
-        CODE_EXECUTOR: execute_code_locally,
+        LIGHTAUTOML_LOCAL_EXECUTOR: execute_code,
+        CODE_EXECUTOR: execute_code,
+        EXECUTE_TRAIN_TEST: execute_train_test,
+        INPUT_NODE: input_node
     }
 
     llm_nodes = {
-        INPUT_NODE: input_node,
         AUTOML_ROUTER_AGENT: automl_router,
-        LIGHTAUTOML_CONFIG_GENERATOR_AGENT: lightautoml_congig_generator,
-        FEDOT_CONFIG_GENERATOR_AGENT: fedot_config_generator,
+        LIGHTAUTOML_CONFIG_GENERATOR_AGENT: lightautoml_generator,
+        FEDOT_CONFIG_GENERATOR_AGENT: fedot_generator,
         INPUT_AGENT: rephraser_agent,
         CODE_GENERATOR_AGENT: code_generation_agent,
         TASK_VALIDATOR: validate_solution,
@@ -126,6 +137,8 @@ def graph_builder() -> StateGraph:
         CODE_IMPROVEMENT_EXPLANATION: human_explanation_agent,
         FEEDBACK_FOR_CODE_IMPROVEMENT: feedback_for_code_improvement_agent,
         FEEDBACK_FOR_CODE_RESULTS: feedback_for_code_improvement_agent,
+        TRAIN_INFERENCE_SPLITTER: train_inference_split,
+        CHECK_TRAIN_TEST_INFERENCE: check_train_test_inference,
         CODE_ROUTER: code_router,
         NO_CODE_AGENT: no_code_agent,
         RESULT_SUMMARIZATION_AGENT: result_summarization_agent,
@@ -187,8 +200,7 @@ def graph_builder() -> StateGraph:
         }
     )
     
-    workflow.add_edge(TASK_VALIDATOR_EXPLANATION, FEEDBACK_FOR_CODE_RESULTS)
-    workflow.add_edge(FEEDBACK_FOR_CODE_RESULTS, ANSWER_GENERATOR)
+    workflow.add_edge(TASK_VALIDATOR_EXPLANATION, TRAIN_INFERENCE_SPLITTER)
     workflow.add_edge(FEEDBACK_FOR_CODE_IMPROVEMENT, CODE_IMPROVEMENT_AGENT)
     workflow.add_edge(CODE_IMPROVEMENT_AGENT, CODE_IMPROVEMENT_EXPLANATION)
 
@@ -196,8 +208,19 @@ def graph_builder() -> StateGraph:
         CODE_IMPROVEMENT_EXPLANATION,
         check_number_improvements,
         {
-            ANSWER_GENERATOR: ANSWER_GENERATOR,
+            TRAIN_INFERENCE_SPLITTER: TRAIN_INFERENCE_SPLITTER,
             CODE_GENERATOR_AGENT: CODE_GENERATOR_AGENT
+        }
+    )
+
+    workflow.add_edge(TRAIN_INFERENCE_SPLITTER, EXECUTE_TRAIN_TEST)
+    workflow.add_edge(EXECUTE_TRAIN_TEST, CHECK_TRAIN_TEST_INFERENCE)
+    workflow.add_conditional_edges(
+        CHECK_TRAIN_TEST_INFERENCE,
+        train_inference_router,
+        {
+            ANSWER_GENERATOR: ANSWER_GENERATOR,
+            EXECUTE_TRAIN_TEST: EXECUTE_TRAIN_TEST
         }
     )
 

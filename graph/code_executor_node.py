@@ -1,9 +1,9 @@
-import subprocess
-import sys
-import tempfile
 import os
 import re
+import sys
 import json
+import tempfile
+import subprocess
 
 from graph.state import AgentState
 from langchain_core.messages import AIMessage
@@ -13,14 +13,14 @@ lightautoml_template = 'graph/lightautoml_template.py'
 PYTHON_REGEX = r"```python-execute(.+?)```"
 JSON_REGEX = r"```json(.+?)```"
 
-lightautoml_error = """В результате выполнения блока {lightautoml_template} возникла ошибка:
+lightautoml_error = """В результате выполнения кода {lightautoml_template} возникла ошибка:
 ```
 {process_err}
 ```
 Исправь ошибку
 """
 
-lightautoml_result = """Результат выполнения блока {lightautoml_template}:
+lightautoml_result = """Результат выполнения кода {lightautoml_template}:
 ```
 {process_stdout}
 ```
@@ -33,12 +33,12 @@ import matplotlib.pyplot as plt
 plt.ioff()  # Turn off interactive mode
 """
 
-local_exec_result = """Результат выполнения блока {index}:
+local_exec_result = """Результат выполнения кода:
 ```
 {process_stdout}
 ```"""
 
-local_exec_error = """В результате выполнения блока {index} возникла ошибка:
+local_exec_error = """В результате выполнения кода возникла ошибка:
 ```
 {process_stderr}
 ```
@@ -46,117 +46,74 @@ local_exec_error = """В результате выполнения блока {i
 
 timeout = 3000
 
-e2b_exec_error = """В результате выполнения блока {index} возникла ошибка:
+e2b_exec_error = """В результате выполнения кода возникла ошибка:
 ```
 {execution_error_traceback}
 ```
 Исправь ошибку"""
 
-e2b_exec_result = """Результат выполнения блока {index}:
+e2b_exec_result = """Результат выполнения блока кода:
 ```
 {logs}
 {text_results}
 ```"""
 
 
-def execute_code(state: AgentState):
-    messages = state['messages']
-    sandbox = state['sandbox']
-    code_blocks = re.findall(PYTHON_REGEX, messages[-1].content, re.DOTALL | re.MULTILINE)
-    results = []
-    executions = []
+def execute_e2b_code(sandbox, code: str) -> str:
+    result = ''
 
-    for index, code_block in enumerate(code_blocks):
-        full_code = matplotlib_setup + code_block + "\nplt.close('all')"
-        execution = sandbox.run_code(full_code)
-        executions.append(execution)
-        
-        if execution.error:
-            results.append(e2b_exec_error.fromat(
-                index=index,
-                execution_error_traceback=execution.error.traceback
-            ))
-            break
-        else:
-            logs = '\n'.join(execution.logs.stdout)
-            text_results = "\n".join([result.text for result in execution.results if result.text])
-            result_text = e2b_exec_result.format(
-                index=index,
-                logs=logs,
-                text_results=text_results
+    execution = sandbox.run_code(code)
+
+    if execution.error:
+        result = e2b_exec_error.format(
+            execution_error_traceback=execution.error.traceback
+        )
+    else:
+        logs = '\n'.join(execution.logs.stdout)
+        text_results = "\n".join([result.text for result in execution.results if result.text])
+        result_text = e2b_exec_result.format(
+            logs=logs,
+            text_results=text_results
+        )
+        result = result_text.strip()
+
+    return result
+
+
+def execute_code_locally(code: str) -> str:
+
+    result = ''
+
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as temp_file:
+        temp_file.write(code)
+        temp_file.flush()
+
+        try:
+            process = subprocess.run(
+                [sys.executable, temp_file.name],
+                capture_output=True,
+                text=True,
+                timeout=timeout
             )
-            results.append(result_text.strip())
-            
-    message = AIMessage(content="\n".join(results))
-    return {"messages": message}
 
+            if process.returncode == 0:
+                result = local_exec_result.format(process_stdout=process.stdout)
+            else:
+                result = local_exec_error.format(process_stderr=process.stderr)
 
-def execute_code_locally(state: AgentState):
-    messages = state['messages']
-    code_blocks = re.findall(PYTHON_REGEX, messages[-1].content, re.DOTALL | re.MULTILINE)
-    results = []
-    executions = []
+        except subprocess.TimeoutExpired:
+            result = f"Код превысил время выполнения ({timeout} секунд)"
+        finally:
+            os.unlink(temp_file.name)
 
-    for index, code_block in enumerate(code_blocks):
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as temp_file:
-            full_code = matplotlib_setup + code_block + "\nplt.close('all')"
-            temp_file.write(full_code)
-            temp_file.flush()
-
-            try:
-                process = subprocess.run(
-                    [sys.executable, temp_file.name],
-                    capture_output=True,
-                    text=True,
-                    timeout=timeout
-                )
-
-                execution_result = type('ExecutionResult', (), {
-                    'logs': type('Logs', (), {'stdout': [process.stdout] if process.stdout else []}),
-                    'results': [],
-                    'error': None if process.returncode == 0 else type('Error', (), {
-                        'traceback': process.stderr
-                    })
-                })
-
-                if process.returncode == 0:
-                    result_text = local_exec_result.format(
-                        index=index,
-                        process_stdout=process.stdout
-                    )
-                    results.append(result_text.strip())
-                else:
-                    results.append(local_exec_error.format(
-                        index=index,
-                        process_stderr=process.stderr
-                    ))
-                    break
-
-                executions.append(execution_result)
-
-            except subprocess.TimeoutExpired:
-                results.append(f"Блок {index} превысил время выполнения ({timeout} секунд)")
-                break
-            finally:
-                os.unlink(temp_file.name)
-
-    message = AIMessage(content="\n".join(results))
-    result_code = "\n".join(code_blocks)
-    old_code = state['generated_code']
-    old_code.append(result_code)
-    old_results = state['code_results']
-    old_results.append(results)
-    return {"messages": message, "generated_code": old_code, "code_results": old_results}
+    return result
 
 
 def execute_lightautoml_locally(state: AgentState):
     messages = state['messages']
     json_block = re.findall(JSON_REGEX, messages[-1].content, re.DOTALL | re.MULTILINE)[0]
     config = json.loads(json_block)
-
-    results = []
-    executions = []
-
+    result = ''
     try:
         process = subprocess.run(
             [
@@ -172,30 +129,64 @@ def execute_lightautoml_locally(state: AgentState):
             timeout=timeout
         )
 
-        execution_result = type('ExecutionResult', (), {
-            'logs': type('Logs', (), {'stdout': [process.stdout] if process.stdout else []}),
-            'results': [],
-            'error': None if process.returncode == 0 else type('Error', (), {
-                'traceback': process.stderr
-            })
-        })
-
         if process.returncode == 0:
             result_text = lightautoml_result.format(
                 lightautoml_template=lightautoml_template,
                 process_stdout=process.stdout
             )
-            results.append(result_text.strip())
+            result = result_text.strip()
         else:
-            results.append(lightautoml_error.format(
+            result = lightautoml_error.format(
                 lightautoml_template=lightautoml_template,
                 process_err=process.stderr
-            ))
-
-        executions.append(execution_result)
+            )
 
     except subprocess.TimeoutExpired:
-        results.append(f"Блок {lightautoml_template} превысил время выполнения ({timeout} секунд)")
+        result = f"Блок {lightautoml_template} превысил время выполнения ({timeout} секунд)"
 
-    message = AIMessage(content="\n".join(results))
-    return {"messages": message}
+    return result
+
+
+def execute_train_test(state: AgentState):
+    messages = state['messages']
+    last_content = messages[-1].content
+
+    code_blocks = re.findall(PYTHON_REGEX, last_content, re.DOTALL | re.MULTILINE)
+    train_code = code_blocks[0].strip() if len(code_blocks) > 0 else ""
+    test_code = code_blocks[1].strip() if len(code_blocks) > 1 else ""
+
+    result_train = execute_code_locally(train_code)
+    result_test = execute_code_locally(test_code)
+
+    result = AIMessage(content=f"Результаты выполнения кода для обучения:\n{result_train}\n\nРезультаты выполнения кода для тестирования:\n{result_test}")
+    return {"messages": result, "train_code": train_code, "test_code": test_code}
+
+
+def execute_code(state: AgentState):
+    messages = state['messages']
+    code_blocks = re.findall(PYTHON_REGEX, messages[-1].content, re.DOTALL | re.MULTILINE)
+    code_to_execute = "\n".join(code_blocks)
+    full_code = matplotlib_setup + code_to_execute + "\nplt.close('all')"
+    execution_location = state['code_generation_config']
+
+    if state['lama']:
+        result = execute_lightautoml_locally(state)
+    # if state['test_split']:
+    #     train = code_blocks[0]
+    #     test = code_blocks[1]
+
+    #     result_train = execute_code_locally(train)
+    #     result_test = execute_code_locally(test)
+    #     result = f"Результаты выполнения кода для обучения:\n{result_train}\n\nРезультаты выполнения кода для тестирования:\n{result_test}"
+    #     code_to_execute = f"train:\n{train}\ntest:\n{test}"
+
+    else:
+        if execution_location == 'e2b':
+            sandbox = state['sandbox']
+            result = execute_e2b_code(sandbox, full_code)
+
+        if execution_location == 'local':
+            result = execute_code_locally(full_code)
+
+    return {"messages": AIMessage(content=result), 'generated_code': code_to_execute, 'code_results': result, 'lama': False, 'test_split': False}
+

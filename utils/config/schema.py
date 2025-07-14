@@ -65,24 +65,21 @@ class LangfuseConfig(SecretInjectableModel):
     secret_key: Optional[SecretStr] = Field(None, json_schema_extra={"metadata": {"secret_source": "LANGFUSE_SECRET_KEY"}})
 
 
-
 class AgentConfig(SecretInjectableModel):
     max_improvements: int = 5
     recursion_limit: int = 1000
     max_code_execution_time: int = 3000
-    metric: str = "ROC-AUC"
-    dataset: str = None
-    word_font: int = 16 
-    language: str = "ru"
-
-    # use_e2b: bool = False
+    code_generation_config: Optional[str] = 'local'
     e2b_token: Optional[SecretStr] = Field(None, json_schema_extra={"metadata": {"secret_source": "E2B_API_KEY"}})
+    prompt_language: Literal["ru", "en"] = "ru"
+
 
 class FedotTemplates(SecretInjectableModel):
     code: str
     train: str
     evaluate: str
     predict: str
+
 
 class FedotConfig(SecretInjectableModel):
     provider: str = "openai"
