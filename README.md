@@ -16,8 +16,7 @@
 **LightAutoDS-Tab**, a multi-AutoML agentic system for tasks with tabular data, which combines an LLM-based code generation with several AutoML tools.
 
 ## ✨ Demo
-[Watch the Demo Video](https://www.youtube.com/watch?v=5e8eADd_HWE)
-[![Watch the Video](LADS/image/lads.jpg)](https://www.youtube.com/watch?v=5e8eADd_HWE)
+[Watch the Video](https://www.youtube.com/watch?v=5e8eADd_HWE)
 
 ## 🚀 Quick Start
 
