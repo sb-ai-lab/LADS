@@ -17,6 +17,7 @@
 
 ## ✨ Demo
 [Watch the Demo Video](https://www.youtube.com/watch?v=5e8eADd_HWE)
+[![Watch the Video](LADS/image/lads.jpg)](https://www.youtube.com/watch?v=5e8eADd_HWE)
 
 ## 🚀 Quick Start
 
