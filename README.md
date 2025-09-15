@@ -18,7 +18,7 @@
 ## ✨ Demo
 [Watch the Video](https://www.youtube.com/watch?v=5e8eADd_HWE)
 
-## User interface
+## 🧑‍💻 User interface
 <img src="./image/AutoDS-UI.png" align="center">
 
 The interface includes two main panels:
@@ -62,7 +62,7 @@ streamlit run app.py
 
 Your application will be hosted on [http://localhost:8501](http://localhost:8501) by default.
 
-## Result
+## 📊 Result
 We evaluated our framework on eight Kaggle ML datasets and compared it with two state-of-the-art open-source solutions: AutoKaggle and AIDE.
 
 To ensure consistency across competitions, we use the Normalized Performance Score (NPS). This score standardizes the results, with a higher value indicating better performance.
