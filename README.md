@@ -54,6 +54,19 @@ streamlit run app.py
 
 Your application will be hosted on [http://localhost:8501](http://localhost:8501) by default.
 
+## Result
+We evaluated our framework on eight Kaggle ML datasets and compared it with two state-of-the-art open-source solutions: AutoKaggle and AIDE.
+
+To ensure consistency across competitions, we use the Normalized Performance Score (NPS). This score standardizes the results, with a higher value indicating better performance. 
+$$
+\begin{equation}
+\mathrm{NPS}= \begin{cases}\frac{1}{1+s}, & \text { if } s \text { is smaller the better } \\ s, & \text { otherwise }\end{cases}
+\end{equation}
+$$
+
+<img src="./image/table1.png" align="center">
+<img src="./image/table2.png" width="50%" align="center">
+
 ## 📜 License
 
 Distributed under the BSD 3-Clause License. See [`LICENSE`](./LICENSE) for more information.
