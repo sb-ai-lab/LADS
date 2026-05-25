@@ -28,12 +28,11 @@ fedot:
   base_url: # Add url
   fix_tries: 2
   templates:
-    code: "skeleton-simple.py"
-    train: "fedot_train.py"
-    evaluate: "fedot_evaluate.py"
-    predict: "fedot_predict.py"
-  predictor_init_kwargs:
-    timeout: 1.0
+    code: "skeleton-tabpfn.py"
+    train: "tabpfn_train.py"
+    evaluate: "tabpfn_evaluate.py"
+    predict: "tabpfn_predict.py"
+  predictor_init_kwargs: {}
 
 model_overrides:
   llm_code_generator_agent:

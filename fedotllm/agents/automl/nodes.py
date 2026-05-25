@@ -1,15 +1,14 @@
 import re
 from pathlib import Path
 
+import joblib
 import pandas as pd
-from fedot.api.main import Fedot
-from golem.core.dag.graph_utils import graph_structure
 from langchain_core.messages import HumanMessage, convert_to_openai_messages
 from langgraph.types import Command
 
 from fedotllm import prompts
 from fedotllm.agents.automl.state import AutoMLAgentState
-from fedotllm.agents.automl.structured import FedotConfig
+from fedotllm.agents.automl.structured import TabPFNConfig
 from fedotllm.agents.automl.templates.load_template import (
     load_template,
     render_template,
@@ -25,9 +24,8 @@ from fedotllm.log import logger
 from utils.config.loader import load_config
 
 PREDICT_METHOD_MAP = {
-    "predict": "predict(features=input_data)",
-    "forecast": "forecast(pre_history=input_data)",
-    "predict_proba": "predict_proba(features=input_data)",
+    "predict": "predict",
+    "predict_proba": "predict_proba",
 }
 
 
@@ -59,21 +57,19 @@ def generate_automl_config(
         prompts.automl.generate_configuration_prompt(
             reflection=state["reflection"],
         ),
-        response_model=FedotConfig,
+        response_model=TabPFNConfig,
     )
 
-    return Command(update={"fedot_config": config})
+    return Command(update={"tabpfn_config": config})
 
 
 def select_skeleton(state: AutoMLAgentState, dataset: Dataset, workspace: Path):
     logger.info("Running select skeleton")
-    fedot_config = state["fedot_config"]
+    tabpfn_config = state["tabpfn_config"]
 
-    # Get prediction method
-    predict_method = PREDICT_METHOD_MAP.get(fedot_config.predict_method)
-
+    predict_method = PREDICT_METHOD_MAP.get(tabpfn_config.predict_method)
     if predict_method is None:
-        raise ValueError(f"Unknown predict method: {fedot_config.predict_method}")
+        raise ValueError(f"Unknown predict method: {tabpfn_config.predict_method}")
 
     code_template = load_template(load_config().fedot.templates.code)
     code_template = render_template(
@@ -100,31 +96,33 @@ def generate_code(state: AutoMLAgentState, inference: AIInference, dataset: Data
 def insert_templates(state: AutoMLAgentState):
     logger.info("Running insert templates")
     code = state["raw_code"]
-    fedot_config = state["fedot_config"]
+    tabpfn_config = state["tabpfn_config"]
     config = load_config()
-    predict_method = PREDICT_METHOD_MAP.get(fedot_config.predict_method)
+    predict_method = PREDICT_METHOD_MAP.get(tabpfn_config.predict_method, "predict")
+
+    model_class = (
+        "TabPFNClassifier"
+        if tabpfn_config.problem.value == "classification"
+        else "TabPFNRegressor"
+    )
 
     try:
         templates = {
             config.fedot.templates.train: {
                 "params": {
-                    "problem": str(fedot_config.problem),
-                    "timeout": fedot_config.timeout,
-                    "cv_folds": fedot_config.cv_folds,
-                    "preset": f"'{fedot_config.preset.value}'",
-                    "metric": f"'{fedot_config.metric.value}'",
-                    **load_config().fedot.predictor_init_kwargs,
+                    "model_class": model_class,
+                    "n_estimators": tabpfn_config.n_estimators,
+                    "device": tabpfn_config.device,
                 }
             },
             config.fedot.templates.evaluate: {
                 "params": {
-                    "problem": str(fedot_config.problem),
+                    "problem": tabpfn_config.problem.value,
                     "predict_method": predict_method,
                 }
             },
             config.fedot.templates.predict: {
                 "params": {
-                    "problem": str(fedot_config.problem),
                     "predict_method": predict_method,
                 }
             },
@@ -213,9 +211,8 @@ def extract_metrics(state: AutoMLAgentState, workspace: Path):
 
         pipeline_path = workspace / "pipeline"
         if pipeline_path.exists():
-            model = Fedot(problem="classification")
-            model.load(pipeline_path)
-            state["pipeline"] = graph_structure(model.current_pipeline)
+            model = joblib.load(pipeline_path)
+            state["pipeline"] = f"TabPFN ({type(model).__name__}, n_estimators={getattr(model, 'n_estimators', 'N/A')})"
             logger.info(f"Pipeline: {state['pipeline']}")
         else:
             logger.warning("Pipeline not found at expected path")
@@ -247,11 +244,11 @@ def run_tests(state: AutoMLAgentState, workspace: Path, inference: AIInference):
                 msg="Pipeline not found. Check if you use `train_model` function and it was executed successfully.",
             )
         try:
-            model = Fedot(problem="classification")
-            model.load(pipeline_path)
-            return Observation(error=False, msg=graph_structure(model.current_pipeline))
+            model = joblib.load(pipeline_path)
+            desc = f"TabPFN ({type(model).__name__}, n_estimators={getattr(model, 'n_estimators', 'N/A')})"
+            return Observation(error=False, msg=desc)
         except Exception as e:
-            return Observation(error=True, msg=f"Pipeline loading failed: {str(e)}")
+            return Observation(error=True, msg=f"Model loading failed: {str(e)}")
 
     def check_submission_file(workspace: Path) -> Observation:
         submission_file = workspace / "submission.csv"
