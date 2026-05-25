@@ -1,11 +1,11 @@
-from fedotllm.agents.automl.structured import FedotConfig
+from fedotllm.agents.automl.structured import TabPFNConfig
 from fedotllm.agents.base import FedotLLMAgentState
 from fedotllm.enviroments import Observation
 
 
 class AutoMLAgentState(FedotLLMAgentState):
     reflection: str
-    fedot_config: FedotConfig
+    tabpfn_config: TabPFNConfig
     skeleton: str
     raw_code: str | None
     code: str | None

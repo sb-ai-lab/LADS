@@ -33,7 +33,7 @@ class AutoMLAgent:
         return Command(
             update={
                 "reflection": None,
-                "fedot_config": None,
+                "tabpfn_config": None,
                 "skeleton": None,
                 "raw_code": None,
                 "code": None,
