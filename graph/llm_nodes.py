@@ -25,16 +25,6 @@ def extract_python_code(text):
     return matches[0].strip() if matches else None
 
 
-def find_message_with_code(state: AgentState):
-    for i in range(1, len(state['messages'])):
-        if re.findall(PYTHON_REGEX, state['messages'][-i].content, re.DOTALL | re.MULTILINE):
-            extracted_code = extract_python_code(state['messages'][-i].content)
-            break
-        else:
-            extracted_code = state['messages'][-i].content
-    return extracted_code
-
-
 # Agent
 
 
@@ -83,15 +73,6 @@ def no_code_agent(state: AgentState, llm):
     chain = prompt_template | llm
     user_input = construct_user_input(state)
     response = chain.invoke({"text": user_input, "history": state['messages']})
-    response.content = '\n' + response.content
-    return {"messages": response}
-
-
-def result_explanation_agent(state: AgentState, llm):
-    prompt_template = load_prompt('result_explanation')
-    chain = prompt_template | llm
-    last_two_message = [msg.content for msg in state['messages'][-2:]]
-    response = chain.invoke({"text": last_two_message})
     response.content = '\n' + response.content
     return {"messages": response}
 

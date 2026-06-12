@@ -36,7 +36,6 @@ TASK_VALIDATOR_EXPLANATION = "human_explanation_validator"
 CODE_IMPROVEMENT_EXPLANATION = "human_explanation_improvement"
 RESULT_EXPLANATION = "human_explanation_results"
 FEEDBACK_FOR_CODE_IMPROVEMENT = "feedback_for_code_improvement_agent"
-FEEDBACK_FOR_CODE_RESULTS = "feedback_for_code_results_agent"
 TRAIN_INFERENCE_SPLITTER = "train_inference_splitter"
 CHECK_TRAIN_TEST_INFERENCE = "check_train_test_inference"
 EXECUTE_TRAIN_TEST = "execute_train_test"
@@ -132,7 +131,6 @@ def graph_builder() -> StateGraph:
         TASK_VALIDATOR_EXPLANATION: human_explanation_agent,
         CODE_IMPROVEMENT_EXPLANATION: human_explanation_agent,
         FEEDBACK_FOR_CODE_IMPROVEMENT: feedback_for_code_improvement_agent,
-        FEEDBACK_FOR_CODE_RESULTS: feedback_for_code_improvement_agent,
         TRAIN_INFERENCE_SPLITTER: train_inference_split,
         CHECK_TRAIN_TEST_INFERENCE: check_train_test_inference,
         CODE_ROUTER: code_router,

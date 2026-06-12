@@ -1,6 +1,11 @@
 """
 FLAML backend — fast, lightweight AutoML by Microsoft.
 Install: pip install flaml
+
+TODO: not yet wired into the graph. To enable:
+  1. Add "flaml" keyword handling in automl_router_system_prompt (graph/prompts_en.py)
+  2. Add FLAML_CONFIG_GENERATOR_AGENT + FLAML_EXECUTOR nodes in graph/graph.py
+  3. Add execute_flaml() in graph/code_executor_node.py using get_backend("flaml")
 """
 from typing import Optional
 import pandas as pd

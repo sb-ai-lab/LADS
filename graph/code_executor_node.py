@@ -109,41 +109,37 @@ def execute_train_test(state: AgentState):
 
 
 def execute_autogluon(state: AgentState) -> dict:
+    from utils.config.loader import load_config
+    from graph.backends.registry import get_backend
+
     json_match = re.findall(JSON_REGEX, state['messages'][-1].content, re.DOTALL)
     if not json_match:
         msg = "AutoGluon config not found in the previous message. Please specify target column and task type."
         return {"messages": AIMessage(content=msg)}
+
+    df = state.get('df')
+    if df is None:
+        return {"messages": AIMessage(content="No dataset loaded. Please upload a dataset first.")}
 
     try:
         config = json.loads(json_match[0])
         target = config['target']
         task_type = config.get('task_type', 'binary')
         metric = config.get('metric', 'roc_auc')
+        time_limit = load_config().general.max_code_execution_time
 
-        df = state.get('df')
-        if df is None:
-            return {"messages": AIMessage(content="No dataset loaded. Please upload a dataset first.")}
-
-        from autogluon.tabular import TabularPredictor
-
-        predictor = TabularPredictor(
-            label=target,
-            problem_type=task_type,
-            eval_metric=metric,
-        ).fit(df, time_limit=120)
-
-        leaderboard = predictor.leaderboard(silent=True)
-        best_score = leaderboard.iloc[0]['score_val']
-        best_model = leaderboard.iloc[0]['model']
+        backend = get_backend("autogluon")
+        result = backend.fit(df, target=target, task_type=task_type, metric=metric, time_limit=time_limit)
 
         report = (
             f"**AutoGluon training complete**\n\n"
             f"- **Target**: `{target}`\n"
             f"- **Task**: {task_type}\n"
-            f"- **Metric ({metric})**: {best_score:.4f}\n"
-            f"- **Best model**: {best_model}\n\n"
-            f"**Leaderboard (top 5)**:\n```\n{leaderboard.head().to_string()}\n```"
+            f"- **{result.metric_name}**: {result.metric_value:.4f}\n\n"
+            f"{result.model_summary}\n"
         )
+        if result.leaderboard is not None:
+            report += f"\n**Leaderboard (top 5)**:\n```\n{result.leaderboard.head().to_string()}\n```"
 
         return {"messages": AIMessage(content=report), "code_results": report}
 
