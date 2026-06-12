@@ -1,9 +1,6 @@
-import os
-import sys
 import logging
 import streamlit as st
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'utils'))
 
 from app.session_state import initialize_session_state
 from app.agent_handler import initialize_services
@@ -13,7 +10,7 @@ from app.ui_components import (
     render_conversation_messages,
     render_input_section
 )
-from utils.config.loader import load_config
+from src.config import load_config
 from colorlog import ColoredFormatter
 
 

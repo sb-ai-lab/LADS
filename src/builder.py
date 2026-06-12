@@ -2,9 +2,9 @@ import re
 
 from langgraph.graph import END, StateGraph, START
 
-from graph.state import AgentState
-from graph.executor import execute_code, execute_train_test, execute_autogluon
-from graph.nodes import (
+from src.state import AgentState
+from src.executor import execute_code, execute_train_test, execute_autogluon
+from src.nodes import (
     input_node,
     rephraser_agent,
     code_generation_agent,
@@ -21,8 +21,8 @@ from graph.nodes import (
     result_summarization_agent,
     final,
 )
-from utils.llm_factory import create_llm
-from utils.config.loader import load_config
+from src.llm_factory import create_llm
+from src.config import load_config
 
 INPUT_NODE = "input_node"
 INPUT_AGENT = "rephraser_agent"

@@ -5,7 +5,7 @@ import json
 import tempfile
 import subprocess
 
-from graph.state import AgentState
+from src.state import AgentState
 from langchain_core.messages import AIMessage
 
 PYTHON_REGEX = r"```python-execute(.+?)```"
@@ -109,8 +109,8 @@ def execute_train_test(state: AgentState):
 
 
 def execute_autogluon(state: AgentState) -> dict:
-    from utils.config.loader import load_config
-    from graph.backends.registry import get_backend
+    from src.config import load_config
+    from src.backends.registry import get_backend
 
     json_match = re.findall(JSON_REGEX, state['messages'][-1].content, re.DOTALL)
     if not json_match:
