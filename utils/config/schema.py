@@ -66,22 +66,6 @@ class AgentConfig(SecretInjectableModel):
     e2b_token: Optional[SecretStr] = Field(None, json_schema_extra={"metadata": {"secret_source": "E2B_API_KEY"}})
 
 
-class FedotTemplates(SecretInjectableModel):
-    code: str
-    train: str
-    evaluate: str
-    predict: str
-
-
-class FedotConfig(SecretInjectableModel):
-    provider: str = "openai"
-    model_name: str = "gpt-4.5"
-    base_url: Optional[str] = None
-    fix_tries: int = 3
-    templates: FedotTemplates
-    predictor_init_kwargs: Dict[str, Any] = Field(default_factory=dict)
-
-
 class SecretsConfig(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
@@ -95,7 +79,6 @@ class SecretsConfig(BaseSettings):
 
 class AppConfig(SecretInjectableModel):
     llm: LLMConfig
-    fedot: FedotConfig
     langfuse: Optional[LangfuseConfig] = None
     general: AgentConfig
     secrets: SecretsConfig

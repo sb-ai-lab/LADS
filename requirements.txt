@@ -64,7 +64,6 @@ exceptiongroup==1.3.0
 executing==2.2.0
 fastembed==0.6.0
 fastjsonschema==2.21.1
-fedot==0.7.5
 filelock==3.18.0
 findpython==0.6.3
 flatbuffers==25.2.10
@@ -136,7 +135,6 @@ langgraph-prebuilt==0.1.3
 langgraph-sdk==0.1.58
 langsmith==0.3.18
 liac-arff==2.5.0
-LightAutoML==0.4.1
 lightgbm==4.6.0
 litellm==1.73.0
 loader==2017.9.11

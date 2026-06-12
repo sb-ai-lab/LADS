@@ -66,7 +66,7 @@ Code:
 Solution:
 {solution}
 
-These are all previous iterations’ improvements and results:
+These are all previous iterations' improvements and results:
 {feedback}
 """
 
@@ -107,37 +107,31 @@ output_result_filter: str = """Extract from the following text which models were
 {result}
 """
 
-automl_router_system_prompt: str = """You are an experienced machine learning developer who understands the specific methods needed to solve a task.
-Determine whether the user wants to solve the given task using the LightAutoML library, Fedot, or another automated machine learning method.
-Carefully analyze the user's request to understand if automl, LightAutoML or Fedot is explicitly mentioned. If the request is general and does not explicitly mention automl, LightAutoML or Fedot, assume that the user does not want to use them and respond with the single word "NO".
-If LightAutoML is specified, respond with the single word "LAMA".
-If Fedot is specified, respond with the single word "FEDOT".
-If automl is specified, respond with the single word "LAMA" or "FEDOT", you can choose.
+automl_router_system_prompt: str = """You are a machine learning engineer deciding whether to use AutoGluon for the user's task.
+If the user explicitly mentions "autogluon", "auto ml", "automl", or asks for automated model selection without writing code, respond with the single word "AUTOGLUON".
+Otherwise respond with the single word "NO".
+Do not write any other text.
 """
 
 automl_router_user_prompt: str = """Based on the task:
 ```{task}```
-determine whether to use LightAutoML or FEDOT to solve it, othervise return NO!
+Should AutoGluon be used? Respond with AUTOGLUON or NO only.
 """
 
-lightautoml_parser_system_prompt: str = """You are an experienced machine learning engineer who formulates tasks in machine learning terms.
-Your job is to generate a training config for an ML model based on input data.
-For regression, use "r2-score" as the task_metric and "reg" as the task_type.
-For classification, use "auc" as the task_metric and "binary" as the task_type.
-Always respond in the format:
+autogluon_config_system_prompt: str = """You are a machine learning engineer.
+Based on the task description, dataset columns, and sample rows, determine:
+- target: the exact column name to predict (must exist in the dataset)
+- task_type: "binary" (binary classification), "multiclass" (multi-class classification), or "regression"
+- metric: one of "roc_auc", "accuracy", "f1", "root_mean_squared_error", "r2"
 
+Respond ONLY with a JSON block, no other text:
 ```json
-{{
-    "task_type": "",
-    "target": "",
-    "task_metric": ""
-}}
+{{"target": "column_name", "task_type": "binary|multiclass|regression", "metric": "..."}}
 ```
 """
 
-lightautoml_parser_user_prompt: str = """Based on the user's task, column names, a few rows from the dataset, and the file name, generate a training config.
-User task: {task}
-File name: {file_name}
+autogluon_config_user_prompt: str = """Task: {task}
+Dataset filename: {file_name}
 Column names: {df_columns}
 Sample rows:
 {df_head}
@@ -155,7 +149,7 @@ human_explanation_user_prompt: str = """This is the text you need to explain:
 human_explanation_planning_user_prompt: str = """This is the text you need to explain:
 {text}
 Explain it in such a way that you first say:
-This is the task solution plan, and then list the steps without explanations! 
+This is the task solution plan, and then list the steps without explanations!
 Do not explain the steps, just write in a maximum of 5 words!
 Bold all steps and important words!
 """
@@ -213,8 +207,8 @@ Test dataset name: {test_dataset_name}
 train_test_checker_system_prompt = """
 You are an experienced machine learning engineer who understands how code works and where errors may occur.
 Your task is to help the user verify if the generated code is correct.
-If it’s incorrect – fix the code and return the corrected version.
-If it’s correct – just respond VALID.
+If it's incorrect – fix the code and return the corrected version.
+If it's correct – just respond VALID.
 
 If the code is INCORRECT, follow these rules:
 The first part should only contain model training code, the second part only inference code.
@@ -272,7 +266,7 @@ Models:
 ...
 - model_n: model_name
 
-model_name can be: LogisticRegression, RandomForest, XGBoost, CatBoost, SVM, ...
+model_name can be: LogisticRegression, RandomForest, XGBoost, CatBoost, SVM, AutoGluon, ...
 
 Metrics:
 - metric_1: metric_result
@@ -287,29 +281,6 @@ Always write metrics as: ROC-AUC, F1, RMSE, ACCURACY, PRECISION, RECALL, ...!
 result_summarization_user_prompt: str = """Based on the code and result:
 ```{text}```
 describe which model was used and which metrics were obtained.
-"""
-
-fedot_parser_system_prompt: str = """You are an experienced data scientist who understands how machine learning models work.
-Your task is to summarize the description and state which model was used and what metric was obtained.
-Always return results in the following format:
-Models:
-- model_1: model_name
-- model_2: model_name
-...
-- model_n: model_name
-model_name - can be: LogisticRegression, RandomForest, XGBoost, CatBoost, SVM, ...
-Metrics:
-- metric_1: metric_result
-- metric_2: metric_result
-...
-- metric_n: metric_result
-Metrics can be: ROC-AUC, F1, RMSE, ACCURACY, PRECISION, RECALL, ... 
-Always write the metrics like this: ROC-AUC, F1, RMSE, ACCURACY, PRECISION, RECALL, ...!
-and return - (model_name) metric: result
-"""
-
-fedot_parser_user_prompt: str = """Based on the results, summarize the description:
-Results: {results}
 """
 
 PROMPTS: Dict[str, Dict[str, str]] = {
@@ -341,9 +312,9 @@ PROMPTS: Dict[str, Dict[str, str]] = {
         "system": automl_router_system_prompt,
         "user": automl_router_user_prompt
     },
-    "lightautoml_parser": {
-        "system": lightautoml_parser_system_prompt,
-        "user": lightautoml_parser_user_prompt
+    "autogluon_config": {
+        "system": autogluon_config_system_prompt,
+        "user": autogluon_config_user_prompt
     },
     "human_explanation": {
         "system": human_explanation_system_prompt,
@@ -384,9 +355,5 @@ PROMPTS: Dict[str, Dict[str, str]] = {
     "human_explanation_improvement": {
         "system": human_explanation_system_prompt,
         "user": human_explanation_improvement_user_prompt
-    },
-    "fedot_parser": {
-        "system": fedot_parser_system_prompt,
-        "user": fedot_parser_user_prompt
     },
 }

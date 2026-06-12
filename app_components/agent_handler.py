@@ -22,9 +22,8 @@ NODE_LABELS = {
     "rephraser_agent":                      ("📝", "Planning solution"),
     "human_explanation_planning":           ("💡", "Explaining plan"),
     "automl_router":                        ("🗺️",  "Selecting framework"),
-    "lightautoml_config_generator":         ("⚙️",  "Configuring AutoML"),
-    "lightautoml_local_executor":           ("⚡", "Running LightAutoML"),
-    "fedot_config_generator":              ("🤖", "Running FEDOT AutoML"),
+    "autogluon_config_generator":           ("⚙️",  "Configuring AutoGluon"),
+    "autogluon_executor":                   ("⚡", "Running AutoGluon"),
     "code_generator_agent":                 ("💻", "Generating code"),
     "code_executor":                        ("▶️",  "Executing code"),
     "result_summarization_agent":           ("📊", "Summarizing results"),
@@ -207,7 +206,7 @@ def stream_agent_response_for_frontend():
             # Extract metrics from relevant nodes
             last_msg_content = values["messages"][-1].content
             metric = _extract_metric(last_msg_content) if current_node in (
-                "result_summarization_agent", "fedot_config_generator", "lightautoml_local_executor"
+                "result_summarization_agent", "autogluon_executor"
             ) else None
             if metric is not None:
                 st.session_state.extract_metric.append(metric)
