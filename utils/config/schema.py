@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional, Literal
+from typing import Any, Dict, Optional
 from pydantic import BaseModel as PydanticBaseModel, SecretStr, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -11,11 +11,9 @@ class SecretInjectableModel(PydanticBaseModel):
         for name, field in self.model_fields.items():
             if field.json_schema_extra is None:
                 continue
-
             metadata = field.json_schema_extra.get("metadata")
             if not metadata:
                 continue
-
             source = metadata.get("secret_source")
             if not source:
                 continue
@@ -32,38 +30,30 @@ class SecretInjectableModel(PydanticBaseModel):
 
             secret_value = getattr(secrets, secret_name, None)
             if secret_value is not None:
-
-                if isinstance(secret_value, SecretStr):
-                    data[name] = secret_value.get_secret_value()
-                else:
-                    data[name] = secret_value
+                data[name] = secret_value.get_secret_value() if isinstance(secret_value, SecretStr) else secret_value
 
         return self.__class__(**data)
 
 
 class LLMConfig(SecretInjectableModel):
-    # Supported providers: "openai", "gigachat", "anthropic", "groq", "ollama", or any litellm prefix
+    # "openai" is the default; any litellm-supported provider works too (anthropic, groq, ollama, …)
     provider: str = "openai"
-    model_name: str = "gpt-4o"
-    verify_ssl: bool = False
-    profanity_check: bool = True
-    scope: str = "GIGACHAT_API_CORP"
-    timeout: Optional[int] = None
+    model_name: str = "gpt-4.5"
     base_url: Optional[str] = None
+    timeout: Optional[int] = None
     token: Optional[SecretStr] = Field(
         None,
         json_schema_extra={"metadata": {"secret_source": {
-            "gigachat": "GIGACHAT_API_TOKEN",
-            "openai": "OPENAI_API_KEY",
+            "openai":    "OPENAI_API_KEY",
             "anthropic": "ANTHROPIC_API_KEY",
-            "groq": "GROQ_API_KEY",
+            "groq":      "GROQ_API_KEY",
         }}}
     )
 
 
 class LangfuseConfig(SecretInjectableModel):
-    host: Optional[str]
-    user: Optional[str] = ''
+    host: Optional[str] = None
+    user: Optional[str] = ""
     public_key: Optional[SecretStr] = Field(None, json_schema_extra={"metadata": {"secret_source": "LANGFUSE_PUBLIC_KEY"}})
     secret_key: Optional[SecretStr] = Field(None, json_schema_extra={"metadata": {"secret_source": "LANGFUSE_SECRET_KEY"}})
 
@@ -72,9 +62,8 @@ class AgentConfig(SecretInjectableModel):
     max_improvements: int = 5
     recursion_limit: int = 50
     max_code_execution_time: int = 600
-    code_generation_config: Optional[str] = 'local'
+    code_generation_config: Optional[str] = "local"
     e2b_token: Optional[SecretStr] = Field(None, json_schema_extra={"metadata": {"secret_source": "E2B_API_KEY"}})
-    prompt_language: Literal["ru", "en"] = "en"
 
 
 class FedotTemplates(SecretInjectableModel):
@@ -86,7 +75,7 @@ class FedotTemplates(SecretInjectableModel):
 
 class FedotConfig(SecretInjectableModel):
     provider: str = "openai"
-    model_name: str = "gpt-4o"
+    model_name: str = "gpt-4.5"
     base_url: Optional[str] = None
     fix_tries: int = 3
     templates: FedotTemplates
@@ -96,12 +85,10 @@ class FedotConfig(SecretInjectableModel):
 class SecretsConfig(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
-    GIGACHAT_API_TOKEN: Optional[SecretStr] = None
     OPENAI_API_KEY: Optional[SecretStr] = None
     ANTHROPIC_API_KEY: Optional[SecretStr] = None
     GROQ_API_KEY: Optional[SecretStr] = None
     E2B_API_KEY: Optional[SecretStr] = None
-    SALUTE_API_KEY: Optional[SecretStr] = None
     LANGFUSE_SECRET_KEY: Optional[SecretStr] = None
     LANGFUSE_PUBLIC_KEY: Optional[SecretStr] = None
 
@@ -111,9 +98,7 @@ class AppConfig(SecretInjectableModel):
     fedot: FedotConfig
     langfuse: Optional[LangfuseConfig] = None
     general: AgentConfig
-
     secrets: SecretsConfig
-
     model_overrides: Optional[Dict[str, LLMConfig]] = None
 
     def inject_all_secrets(self):

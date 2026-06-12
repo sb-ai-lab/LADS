@@ -157,8 +157,6 @@ def _render_config_tab():
     mode = config.general.code_generation_config or "local"
     st.code(f"Mode:     {mode}\nTimeout:  {config.general.max_code_execution_time}s\nMax iter: {config.general.max_improvements}", language=None)
 
-    st.markdown('<p class="section-label">Language</p>', unsafe_allow_html=True)
-    st.code(f"Prompts: {config.general.prompt_language}", language=None)
 
 
 def render_conversation_messages():

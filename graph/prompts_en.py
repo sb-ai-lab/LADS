@@ -312,7 +312,7 @@ fedot_parser_user_prompt: str = """Based on the results, summarize the descripti
 Results: {results}
 """
 
-GIGACHAT_PROMPTS_EN: Dict[str, Dict[str, str]] = {
+PROMPTS: Dict[str, Dict[str, str]] = {
     "code_generator": {
         "system": code_generator_system_prompt,
         "user": code_generator_user_prompt

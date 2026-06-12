@@ -169,7 +169,7 @@ def execute_code(state: AgentState):
     full_code = matplotlib_setup + code_to_execute + "\nplt.close('all')"
     execution_location = state['code_generation_config']
 
-    if state['lama']:
+    if state['use_lightautoml']:
         result = execute_lightautoml_locally(state)
     else:
         if execution_location == 'e2b':
@@ -179,4 +179,4 @@ def execute_code(state: AgentState):
         if execution_location == 'local':
             result = execute_code_locally(full_code)
 
-    return {"messages": AIMessage(content=result), 'generated_code': code_to_execute, 'code_results': result, 'lama': False, 'test_split': False}
+    return {"messages": AIMessage(content=result), 'generated_code': code_to_execute, 'code_results': result, 'use_lightautoml': False, 'test_split': False}

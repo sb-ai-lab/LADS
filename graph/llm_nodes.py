@@ -54,7 +54,7 @@ def input_node(state: AgentState) -> AgentState:
         'generated_code': "",
         'code_results': "",
         'rephrased_plan': "",
-        'lama': False,
+        'use_lightautoml': False,
         "test_split": False,
         "test_df": None,
         "test_df_name": "",
@@ -138,7 +138,7 @@ def lightautoml_generator(state: AgentState, llm):
         "df_head": state['df'].head().to_string()
     })
     response.content = '\n' + response.content.strip()
-    return {"messages": response, 'lama': True}
+    return {"messages": response, 'use_lightautoml': True}
 
 
 def fedot_generator(state: AgentState, llm) -> str:

@@ -20,7 +20,7 @@ class AgentState(TypedDict):
     generated_code: str
     rephrased_plan: str
     code_results: str
-    lama: bool
+    use_lightautoml: bool
     test_split: bool
     improvements_code: List[str]
     human_understanding: List[str]

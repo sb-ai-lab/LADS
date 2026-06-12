@@ -1,30 +1,21 @@
-# llm:
-#   provider: gigachat
-#   model_name: GigaChat-2-Max
-#   verify_ssl: false
-#   profanity_check: false
-#   scope: GIGACHAT_API_CORP
-#   timeout: 600
-
 llm:
   provider: openai
-  model_name: gpt-4o
-  base_url: # Add url
+  model_name: gpt-4.5
+  base_url: # Add your OpenAI-compatible endpoint (leave blank for default api.openai.com)
 
 langfuse:
-  host: # Add host
-  user: # Add user
+  host:   # Optional: Add Langfuse host for tracing
+  user:   # Optional: Add user identifier
 
 general:
   max_improvements: 5
-  code_generation_config: 'local'
+  code_generation_config: 'local'   # 'local' or 'e2b'
   recursion_limit: 50
-  max_code_execution_time: 600
-  prompt_language: "en"
+  max_code_execution_time: 600      # seconds
 
 fedot:
   provider: openai
-  model_name: gpt-4o
+  model_name: gpt-4.5
   base_url: # Add url
   fix_tries: 3
   templates:
@@ -34,8 +25,3 @@ fedot:
     predict: "fedot_predict.py"
   predictor_init_kwargs:
     timeout: 1.0
-
-model_overrides:
-  llm_code_generator_agent:
-    provider: gigachat
-    model_name: GigaChat-2-Max
