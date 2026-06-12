@@ -8,7 +8,7 @@ from typing import List, Tuple
 from utils.config.loader import load_config
 from e2b_code_interpreter import Sandbox
 from langfuse.callback import CallbackHandler
-from graph.graph import graph_builder
+from graph.builder import graph_builder
 from sklearn.model_selection import train_test_split
 from .data_handlers import save_file_to_disk
 
