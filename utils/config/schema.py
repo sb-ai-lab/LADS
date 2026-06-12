@@ -42,18 +42,21 @@ class SecretInjectableModel(PydanticBaseModel):
 
 
 class LLMConfig(SecretInjectableModel):
-    provider: Literal["gigachat", "openai"] = "gigachat"
-    model_name: str = "GigaChat-2-Max"
+    # Supported providers: "openai", "gigachat", "anthropic", "groq", "ollama", or any litellm prefix
+    provider: str = "openai"
+    model_name: str = "gpt-4o"
     verify_ssl: bool = False
     profanity_check: bool = True
     scope: str = "GIGACHAT_API_CORP"
     timeout: Optional[int] = None
     base_url: Optional[str] = None
     token: Optional[SecretStr] = Field(
-        None, 
+        None,
         json_schema_extra={"metadata": {"secret_source": {
             "gigachat": "GIGACHAT_API_TOKEN",
-            "openai": "OPENAI_API_KEY"
+            "openai": "OPENAI_API_KEY",
+            "anthropic": "ANTHROPIC_API_KEY",
+            "groq": "GROQ_API_KEY",
         }}}
     )
 
@@ -67,11 +70,11 @@ class LangfuseConfig(SecretInjectableModel):
 
 class AgentConfig(SecretInjectableModel):
     max_improvements: int = 5
-    recursion_limit: int = 1000
-    max_code_execution_time: int = 3000
+    recursion_limit: int = 50
+    max_code_execution_time: int = 600
     code_generation_config: Optional[str] = 'local'
     e2b_token: Optional[SecretStr] = Field(None, json_schema_extra={"metadata": {"secret_source": "E2B_API_KEY"}})
-    prompt_language: Literal["ru", "en"] = "ru"
+    prompt_language: Literal["ru", "en"] = "en"
 
 
 class FedotTemplates(SecretInjectableModel):
@@ -85,7 +88,7 @@ class FedotConfig(SecretInjectableModel):
     provider: str = "openai"
     model_name: str = "gpt-4o"
     base_url: Optional[str] = None
-    fix_tries: int = 2
+    fix_tries: int = 3
     templates: FedotTemplates
     predictor_init_kwargs: Dict[str, Any] = Field(default_factory=dict)
 
@@ -95,6 +98,8 @@ class SecretsConfig(BaseSettings):
 
     GIGACHAT_API_TOKEN: Optional[SecretStr] = None
     OPENAI_API_KEY: Optional[SecretStr] = None
+    ANTHROPIC_API_KEY: Optional[SecretStr] = None
+    GROQ_API_KEY: Optional[SecretStr] = None
     E2B_API_KEY: Optional[SecretStr] = None
     SALUTE_API_KEY: Optional[SecretStr] = None
     LANGFUSE_SECRET_KEY: Optional[SecretStr] = None

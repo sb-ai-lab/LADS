@@ -15,12 +15,12 @@ PYTHON_REGEX = r"```python-execute(.+?)```"
 
 
 def construct_user_input(state: AgentState) -> str:
-    user_input = f"Задача: {state['task']}\n"
+    user_input = f"Task: {state['task']}\n"
     if "df" in state:
-        user_input += f"Превью датасета: {state['df'].head().to_string()}\n"
-        user_input += f"Колонки, которые есть в датасете: {state['df'].columns}\n"
+        user_input += f"Dataset preview:\n{state['df'].head().to_string()}\n"
+        user_input += f"Dataset columns: {list(state['df'].columns)}\n"
     if "df_name" in state:
-        user_input += f"Название файла с датасетом: {state['df_name']}\n"
+        user_input += f"Dataset filename: {state['df_name']}\n"
     return user_input
 
 
@@ -222,9 +222,9 @@ def validate_solution(state: AgentState, llm):
 def feedback_for_code_improvement_agent(state: AgentState, llm_base):
 
     generated_code = state['generated_code'][-1]
-    code_result = state['code_results'][-1] if state['code_results'] else "Нет результатов выполнения кода."
+    code_result = state['code_results'][-1] if state['code_results'] else "No code execution results available."
 
-    combined_message = f"Сгенерированный код:\n{generated_code}\n\nРезультат выполнения кода:\n{code_result}"
+    combined_message = f"Generated code:\n{generated_code}\n\nCode execution result:\n{code_result}"
 
     user_prompt = load_prompt('output_result_filter')
     chain = user_prompt | llm_base
@@ -233,8 +233,8 @@ def feedback_for_code_improvement_agent(state: AgentState, llm_base):
     past_feedback = state.get('feedback', [])
     if state.get('improvements_code'):
         latest_improvement = state['improvements_code'][-1]
-        past_feedback.append({f"Улучшение {state['code_improvement_count']}": latest_improvement["improve"].content})
-    res = {f"Результат {state['code_improvement_count']}": response.content}
+        past_feedback.append({f"Improvement {state['code_improvement_count']}": latest_improvement["improve"].content})
+    res = {f"Result {state['code_improvement_count']}": response.content}
     past_feedback.append(res)
 
     return {"feedback": past_feedback, "messages": response}
@@ -244,7 +244,7 @@ def code_improvement_agent(state: AgentState, llm):
 
     prompt_template = load_prompt('code_improvement')
     user_input = construct_user_input(state)
-    feedback = state['feedback'][-1] if state['feedback'] else "Нет предыдущих улучшений."
+    feedback = state['feedback'][-1] if state['feedback'] else "No previous improvements."
     code = state['generated_code'][-1]
 
     chain = prompt_template | llm

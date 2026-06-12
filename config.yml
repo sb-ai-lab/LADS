@@ -19,14 +19,14 @@ general:
   max_improvements: 5
   code_generation_config: 'local'
   recursion_limit: 50
-  max_code_execution_time: 3000
+  max_code_execution_time: 600
   prompt_language: "en"
 
 fedot:
   provider: openai
   model_name: gpt-4o
   base_url: # Add url
-  fix_tries: 2
+  fix_tries: 3
   templates:
     code: "skeleton-simple.py"
     train: "fedot_train.py"

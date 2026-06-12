@@ -79,8 +79,9 @@ def task_validation_retry(state: AgentState) -> str:
 
 
 def check_number_improvements(state: AgentState) -> str:
-    if state['code_improvement_count'] >= 3:
-        return ANSWER_GENERATOR
+    config = load_config()
+    if state['code_improvement_count'] >= config.general.max_improvements:
+        return TRAIN_INFERENCE_SPLITTER
     return CODE_GENERATOR_AGENT
 
 def code_router_func(state: AgentState) -> str:

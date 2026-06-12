@@ -13,14 +13,14 @@ lightautoml_template = 'graph/lightautoml_template.py'
 PYTHON_REGEX = r"```python-execute(.+?)```"
 JSON_REGEX = r"```json(.+?)```"
 
-lightautoml_error = """В результате выполнения кода {lightautoml_template} возникла ошибка:
+lightautoml_error = """Code execution of {lightautoml_template} failed with error:
 ```
 {process_err}
 ```
-Исправь ошибку
+Please fix the error.
 """
 
-lightautoml_result = """Результат выполнения кода {lightautoml_template}:
+lightautoml_result = """Code execution result of {lightautoml_template}:
 ```
 {process_stdout}
 ```
@@ -30,29 +30,29 @@ matplotlib_setup = """
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-plt.ioff()  # Turn off interactive mode
+plt.ioff()
 """
 
-local_exec_result = """Результат выполнения кода:
+local_exec_result = """Code execution result:
 ```
 {process_stdout}
 ```"""
 
-local_exec_error = """В результате выполнения кода возникла ошибка:
+local_exec_error = """Code execution failed with error:
 ```
 {process_stderr}
 ```
-Исправь ошибку"""
+Please fix the error."""
 
-timeout = 3000
+timeout = 600
 
-e2b_exec_error = """В результате выполнения кода возникла ошибка:
+e2b_exec_error = """Code execution failed with error:
 ```
 {execution_error_traceback}
 ```
-Исправь ошибку"""
+Please fix the error."""
 
-e2b_exec_result = """Результат выполнения блока кода:
+e2b_exec_result = """Code execution result:
 ```
 {logs}
 {text_results}
@@ -102,7 +102,7 @@ def execute_code_locally(code: str) -> str:
                 result = local_exec_error.format(process_stderr=process.stderr)
 
         except subprocess.TimeoutExpired:
-            result = f"Код превысил время выполнения ({timeout} секунд)"
+            result = f"Code execution timed out after {timeout} seconds."
         finally:
             os.unlink(temp_file.name)
 
@@ -142,7 +142,7 @@ def execute_lightautoml_locally(state: AgentState):
             )
 
     except subprocess.TimeoutExpired:
-        result = f"Блок {lightautoml_template} превысил время выполнения ({timeout} секунд)"
+        result = f"LightAutoML execution timed out after {timeout} seconds."
 
     return result
 
@@ -158,7 +158,7 @@ def execute_train_test(state: AgentState):
     result_train = execute_code_locally(train_code)
     result_test = execute_code_locally(test_code)
 
-    result = AIMessage(content=f"Результаты выполнения кода для обучения:\n{result_train}\n\nРезультаты выполнения кода для тестирования:\n{result_test}")
+    result = AIMessage(content=f"Training code results:\n{result_train}\n\nTest inference results:\n{result_test}")
     return {"messages": result, "train_code": train_code, "test_code": test_code}
 
 
@@ -171,15 +171,6 @@ def execute_code(state: AgentState):
 
     if state['lama']:
         result = execute_lightautoml_locally(state)
-    # if state['test_split']:
-    #     train = code_blocks[0]
-    #     test = code_blocks[1]
-
-    #     result_train = execute_code_locally(train)
-    #     result_test = execute_code_locally(test)
-    #     result = f"Результаты выполнения кода для обучения:\n{result_train}\n\nРезультаты выполнения кода для тестирования:\n{result_test}"
-    #     code_to_execute = f"train:\n{train}\ntest:\n{test}"
-
     else:
         if execution_location == 'e2b':
             sandbox = state['sandbox']
@@ -189,4 +180,3 @@ def execute_code(state: AgentState):
             result = execute_code_locally(full_code)
 
     return {"messages": AIMessage(content=result), 'generated_code': code_to_execute, 'code_results': result, 'lama': False, 'test_split': False}
-
