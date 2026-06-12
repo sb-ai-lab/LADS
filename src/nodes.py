@@ -1,0 +1,214 @@
+import re
+import os
+
+from src.state import AgentState
+from src.prompts import load_prompt
+
+
+PYTHON_REGEX = r"```python-execute(.+?)```"
+
+# Additional Functions
+
+
+def construct_user_input(state: AgentState) -> str:
+    user_input = f"Task: {state['task']}\n"
+    if "df" in state:
+        user_input += f"Dataset preview:\n{state['df'].head().to_string()}\n"
+        user_input += f"Dataset columns: {list(state['df'].columns)}\n"
+    if "df_name" in state:
+        user_input += f"Dataset filename: {state['df_name']}\n"
+    return user_input
+
+
+def extract_python_code(text):
+    matches = re.findall(PYTHON_REGEX, text, re.DOTALL)
+    return matches[0].strip() if matches else None
+
+
+# Agent
+
+
+def input_node(state: AgentState) -> AgentState:
+    state['task'] = state['messages'][-1].content
+    default_state = {
+        'code_for_test': [],
+        'feedback': [],
+        'code_improvement_count': 0,
+        'improvements_code': [],
+        'human_understanding': [],
+        'generated_code': "",
+        'code_results': "",
+        'rephrased_plan': "",
+        "test_split": False,
+        "test_df": None,
+        "test_df_name": "",
+    }
+
+    for key, value in default_state.items():
+        if key not in state:
+            state[key] = value
+
+    return state
+
+
+def rephraser_agent(state: AgentState, llm):
+    user_input = construct_user_input(state)
+    prompt_template = load_prompt('rephraser')
+    chain = prompt_template | llm
+    message = chain.invoke({"user_input": user_input})
+    message.content = '\n' + message.content
+    state['rephrased_plan'] = message.content.strip()
+    return {"messages": message}
+
+
+def code_router(state: AgentState, llm):
+    prompt_template = load_prompt('code_router')
+    chain = prompt_template | llm
+    response = chain.invoke({"task": state['task']})
+    return {"messages": response}
+
+
+def no_code_agent(state: AgentState, llm):
+    prompt_template = load_prompt('no_code')
+    chain = prompt_template | llm
+    user_input = construct_user_input(state)
+    response = chain.invoke({"text": user_input, "history": state['messages']})
+    response.content = '\n' + response.content
+    return {"messages": response}
+
+
+def result_summarization_agent(state: AgentState, llm):
+    prompt_template = load_prompt('result_summarization')
+    chain = prompt_template | llm
+    last_two_message = [msg.content for msg in state['messages'][-2:]]
+    response = chain.invoke({"text": last_two_message})
+    response.content = '\n' + response.content
+    return {"messages": response}
+
+
+def automl_router(state: AgentState, llm):
+    prompt_template = load_prompt('automl_router')
+    chain = prompt_template | llm
+    response = chain.invoke({"task": state['task']})
+    return {"messages": response}
+
+
+def autogluon_config_generator(state: AgentState, llm):
+    prompt_template = load_prompt('autogluon_config')
+    chain = prompt_template | llm
+    response = chain.invoke({
+        "task": state['task'],
+        "file_name": state.get('df_name', 'unknown'),
+        "df_columns": list(state['df'].columns) if state.get('df') is not None else [],
+        "df_head": state['df'].head().to_string() if state.get('df') is not None else "No data",
+    })
+    response.content = '\n' + response.content.strip()
+    return {"messages": response}
+
+
+def human_explanation_agent(state: AgentState, llm):
+    human_prompts = {
+        'rephraser_agent': 'human_explanation_planning',
+        'task_validator': 'human_explanation_validator',
+        'code_improvement_agent': 'human_explanation_improvement',
+        'result_summarization_agent': 'human_explanation_results',
+    }
+
+    prompt_template = load_prompt(human_prompts.get(state['current_node'], 'human_explanation'))
+    chain = prompt_template | llm
+
+    last_message = state['messages'][-1].content
+    response = chain.invoke({"text": last_message, "history": state['messages']})
+
+    explanation_text = response.content.strip()
+    current_understanding = state.get('human_understanding', [])
+    updated_understanding = current_understanding + [explanation_text]
+
+    return {
+        "messages": response,
+        "human_understanding": updated_understanding,
+    }
+
+
+def code_generation_agent(state: AgentState, llm):
+    prompt_template = load_prompt('code_generator')
+    chain = prompt_template | llm
+    user_input = construct_user_input(state)
+    response = chain.invoke({"user_input": user_input, "history": state['messages']})
+    response.content = '\n' + response.content
+    return {"messages": response}
+
+
+def validate_solution(state: AgentState, llm):
+    user_input = construct_user_input(state)
+
+    prompt_template = load_prompt('validate_solution')
+    chain = prompt_template | llm
+    solution = "Code:\n```python-execute" + state["generated_code"] + '\n```'
+    solution += "Code execution result: " + ''.join(state['code_results'])
+
+    message = chain.invoke({"user_input": user_input, "solution": solution, "rephrased_plan": state['rephrased_plan']})
+    return {"messages": message}
+
+
+def feedback_for_code_improvement_agent(state: AgentState, llm_base):
+    generated_code = state['generated_code'][-1]
+    code_result = state['code_results'][-1] if state['code_results'] else "No code execution results available."
+
+    combined_message = f"Generated code:\n{generated_code}\n\nCode execution result:\n{code_result}"
+
+    user_prompt = load_prompt('output_result_filter')
+    chain = user_prompt | llm_base
+    response = chain.invoke({"result": combined_message})
+
+    past_feedback = state.get('feedback', [])
+    if state.get('improvements_code'):
+        latest_improvement = state['improvements_code'][-1]
+        past_feedback.append({f"Improvement {state['code_improvement_count']}": latest_improvement["improve"].content})
+    res = {f"Result {state['code_improvement_count']}": response.content}
+    past_feedback.append(res)
+
+    return {"feedback": past_feedback, "messages": response}
+
+
+def code_improvement_agent(state: AgentState, llm):
+    prompt_template = load_prompt('code_improvement')
+    user_input = construct_user_input(state)
+    feedback = state['feedback'][-1] if state['feedback'] else "No previous improvements."
+    code = state['generated_code'][-1]
+
+    chain = prompt_template | llm
+    message = chain.invoke({"user_input": user_input, "code": code, "solution": state['generated_code'][-1], "feedback": feedback})
+
+    improvements = state['improvements_code']
+    improvements.append({"improve": message})
+
+    return {"messages": message, "code_improvement_count": state['code_improvement_count'] + 1, "improvements_code": improvements}
+
+
+def train_inference_split(state: AgentState, llm):
+    prompt_template = load_prompt('train_inference_split')
+    chain = prompt_template | llm
+    response = chain.invoke({"code": state['generated_code'], "train_dataset_name": state['df_name'], "test_dataset_name": state['test_df_name']})
+    return {"messages": response, "test_split": True}
+
+
+def check_train_test_inference(state: AgentState, llm):
+    last_message = state['messages'][-1].content
+    prompt_template = load_prompt('train_test_checker')
+    chain = prompt_template | llm
+    response = chain.invoke({"code_result": last_message, "train_code": state['train_code'], "test_code": state['test_code']})
+    return {"messages": response}
+
+
+def final(state: AgentState, llm):
+    prompt_message = load_prompt('output_summarization')
+    chain = prompt_message | llm
+    message = chain.invoke({"task": state['task'], "base": state['human_understanding'][1], "feedback": state['feedback']})
+
+    os.makedirs('./code', exist_ok=True)
+    with open('./code/train.py', 'w', encoding='utf-8') as f:
+        f.write(state.get('train_code', ''))
+    with open('./code/test.py', 'w', encoding='utf-8') as f:
+        f.write(state.get('test_code', ''))
+    return {"messages": message}

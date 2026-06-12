@@ -1,40 +1,14 @@
-# llm:
-#   provider: gigachat
-#   model_name: GigaChat-2-Max
-#   verify_ssl: false
-#   profanity_check: false
-#   scope: GIGACHAT_API_CORP
-#   timeout: 600
-
 llm:
   provider: openai
-  model_name: gpt-4o
-  base_url: # Add url
+  model_name: gpt-4.5
+  base_url: # Add your OpenAI-compatible endpoint (leave blank for default api.openai.com)
 
 langfuse:
-  host: # Add host
-  user: # Add user
+  host:   # Optional: Langfuse host for tracing
+  user:   # Optional: user identifier
 
 general:
   max_improvements: 5
-  code_generation_config: 'local'
+  code_generation_config: 'local'   # 'local' or 'e2b'
   recursion_limit: 50
-  max_code_execution_time: 3000
-  prompt_language: "en"
-
-fedot:
-  provider: openai
-  model_name: gpt-4o
-  base_url: # Add url
-  fix_tries: 2
-  templates:
-    code: "skeleton-tabpfn.py"
-    train: "tabpfn_train.py"
-    evaluate: "tabpfn_evaluate.py"
-    predict: "tabpfn_predict.py"
-  predictor_init_kwargs: {}
-
-model_overrides:
-  llm_code_generator_agent:
-    provider: gigachat
-    model_name: GigaChat-2-Max
+  max_code_execution_time: 600      # seconds
