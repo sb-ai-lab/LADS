@@ -43,6 +43,8 @@ class LLMConfig(SecretInjectableModel):
     provider: str = "openai"
     model_name: str = "gpt-4.5"
     base_url: Optional[str] = None
+    deployment_name: Optional[str] = None  # Azure OpenAI deployment name
+    api_version: Optional[str] = None      # Azure OpenAI API version
     timeout: Optional[int] = None
     token: Optional[SecretStr] = Field(
         None,
@@ -50,6 +52,7 @@ class LLMConfig(SecretInjectableModel):
             "openai":    "OPENAI_API_KEY",
             "anthropic": "ANTHROPIC_API_KEY",
             "groq":      "GROQ_API_KEY",
+            "azure":     "AZURE_OPENAI_API_KEY",
         }}}
     )
 
@@ -75,12 +78,18 @@ class AgentConfig(SecretInjectableModel):
     )
 
 
+class PersistenceConfig(PydanticBaseModel):
+    enabled: bool = True
+    path: str = "./experiments"
+
+
 class SecretsConfig(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     OPENAI_API_KEY: Optional[SecretStr] = None
     ANTHROPIC_API_KEY: Optional[SecretStr] = None
     GROQ_API_KEY: Optional[SecretStr] = None
+    AZURE_OPENAI_API_KEY: Optional[SecretStr] = None
     E2B_API_KEY: Optional[SecretStr] = None
     LANGFUSE_SECRET_KEY: Optional[SecretStr] = None
     LANGFUSE_PUBLIC_KEY: Optional[SecretStr] = None
@@ -90,6 +99,7 @@ class AppConfig(SecretInjectableModel):
     llm: LLMConfig
     langfuse: Optional[LangfuseConfig] = None
     general: AgentConfig
+    persistence: Optional[PersistenceConfig] = None
     secrets: SecretsConfig
     model_overrides: Optional[Dict[str, LLMConfig]] = None
 

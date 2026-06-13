@@ -1,4 +1,4 @@
-from langchain_openai import ChatOpenAI
+from langchain_openai import ChatOpenAI, AzureChatOpenAI
 
 try:
     from langchain_community.chat_models import ChatLiteLLM
@@ -11,7 +11,7 @@ def create_llm(node_name: str, config):
     """
     Return a LangChain chat model for the given node.
     Priority: per-node override → global llm config.
-    Supported providers: "openai" (native) or any litellm prefix (anthropic, groq, ollama, …).
+    Supported providers: "openai", "azure", or any litellm prefix (anthropic, groq, ollama, …).
     """
     llm_cfg = (
         config.model_overrides.get(node_name)
@@ -20,6 +20,19 @@ def create_llm(node_name: str, config):
     )
 
     provider = llm_cfg.provider.lower()
+
+    if provider == "azure":
+        kwargs = dict(
+            model_name=llm_cfg.model_name,
+            azure_endpoint=llm_cfg.base_url,
+            azure_deployment=llm_cfg.deployment_name,
+            openai_api_version=llm_cfg.api_version or "2024-10-21",
+        )
+        if llm_cfg.token:
+            kwargs["openai_api_key"] = llm_cfg.token.get_secret_value()
+        if llm_cfg.timeout:
+            kwargs["request_timeout"] = llm_cfg.timeout
+        return AzureChatOpenAI(**kwargs)
 
     if provider == "openai":
         kwargs = dict(model_name=llm_cfg.model_name)
@@ -45,5 +58,5 @@ def create_llm(node_name: str, config):
     raise ValueError(
         f"Unknown provider '{provider}'. "
         f"Install langchain-community for litellm support (pip install langchain-community), "
-        f"or use provider='openai'."
+        f"or use provider='openai' or 'azure'."
     )

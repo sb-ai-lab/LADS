@@ -1,5 +1,5 @@
 import pandas as pd
-from typing import TYPE_CHECKING, Annotated, Any, Sequence, List, Optional
+from typing import TYPE_CHECKING, Annotated, Any, Sequence, List, Optional, Dict
 from typing_extensions import TypedDict
 from langchain_core.messages import AnyMessage
 from langgraph.graph.message import add_messages
@@ -28,3 +28,11 @@ class AgentState(TypedDict):
     test_code: str
     test_df: Optional[pd.DataFrame]
     test_df_name: str
+    # ── Interview workflow fields ─────────────────────────────────────────────
+    interview_active: bool              # True while gathering domain context from user
+    interview_questions: List[Dict]     # [{"question": "...", "options": [...], "answer": ""}]
+    interview_current_idx: int          # index of next unanswered question
+    modeling_spec: str                  # JSON spec generated after interview completes
+    bioprocess_type: str                # detected domain: "aggregation"|"virus_clearance"|"custom"
+    model_verdict: str                  # DS quality judgment: "USABLE"|"IMPROVABLE"|"INSUFFICIENT_DATA"
+    experiment_id: str                  # UUID for session persistence

@@ -55,4 +55,9 @@ def create_new_conversation() -> str:
     if "shown_human_messages" in st.session_state:
         st.session_state.shown_human_messages = set()
 
+    # Reset interview state for new conversation
+    for field in ['interview_active', 'interview_questions', 'interview_current_idx',
+                  'modeling_spec', 'bioprocess_type', 'model_verdict', 'experiment_id']:
+        st.session_state.pop(field, None)
+
     return conversation_id

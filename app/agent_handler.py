@@ -19,11 +19,20 @@ logger = logging.getLogger(__name__)
 NODE_LABELS = {
     "input_node":                           ("📥", "Parsing task"),
     "code_router":                          ("🔀", "Routing request"),
-    "rephraser_agent":                      ("📝", "Planning solution"),
-    "human_explanation_planning":           ("💡", "Explaining plan"),
     "automl_router":                        ("🗺️",  "Selecting framework"),
+    # AutoGluon path
     "autogluon_config_generator":           ("⚙️",  "Configuring AutoGluon"),
     "autogluon_executor":                   ("⚡", "Running AutoGluon"),
+    "model_quality_judge":                  ("🔬", "Evaluating results"),
+    # Interview path
+    "scope_declaration":                    ("📌", "Setting scope"),
+    "interview_planner":                    ("🎯", "Preparing questions"),
+    "interview_question_asker":             ("❓", "Asking question"),
+    "interview_response_handler":           ("💬", "Processing answer"),
+    "spec_generator":                       ("📋", "Generating spec"),
+    # LLM codegen path
+    "rephraser_agent":                      ("📝", "Planning solution"),
+    "human_explanation_planning":           ("💡", "Explaining plan"),
     "code_generator_agent":                 ("💻", "Generating code"),
     "code_executor":                        ("▶️",  "Executing code"),
     "result_summarization_agent":           ("📊", "Summarizing results"),
@@ -38,6 +47,7 @@ NODE_LABELS = {
     "check_train_test_inference":           ("🔎", "Checking output format"),
     "answer_generator":                     ("📋", "Preparing final report"),
     "no_code_agent":                        ("💬", "Answering question"),
+    "experiment_saver":                     ("💾", "Saving experiment"),
 }
 
 # Nodes whose output goes to human interpretation panel (not technical panel)
@@ -185,7 +195,20 @@ def stream_agent_response_for_frontend():
             agent_message["test_df"] = test_df
             agent_message["test_df_name"] = test_df_name
 
+        # Restore interview state from session if active
+        _INTERVIEW_FIELDS = [
+            'interview_active', 'interview_questions', 'interview_current_idx',
+            'modeling_spec', 'bioprocess_type', 'model_verdict', 'experiment_id',
+        ]
+        if st.session_state.get('interview_active', False):
+            for field in _INTERVIEW_FIELDS:
+                val = st.session_state.get(field)
+                if val is not None:
+                    agent_message[field] = val
+
+        last_state = None
         for values in agent.stream(agent_message, stream_mode="values", config=agent_config):
+            last_state = values
             human_content = None
             current_node = values.get("current_node")
 
@@ -230,6 +253,12 @@ def stream_agent_response_for_frontend():
                 "content": node_message_content,
                 "human_content": human_content,
             }
+
+        # Persist interview state to session after stream completes
+        if last_state is not None:
+            for field in _INTERVIEW_FIELDS:
+                if field in last_state:
+                    st.session_state[field] = last_state[field]
 
     except RecursionError:
         logger.error("Maximum recursion depth reached during agent processing.")

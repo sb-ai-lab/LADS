@@ -111,16 +111,29 @@ output_result_filter: str = """Extract from the following text which models were
 {result}
 """
 
-automl_router_system_prompt: str = """You are a machine learning engineer deciding whether to use AutoGluon for the user's task.
-If the user explicitly mentions "autogluon", "auto ml", "automl", or asks for automated model selection without writing code, respond with the single word "AUTOGLUON".
-Otherwise respond with the single word "NO".
-Do not write any other text.
-"""
+automl_router_system_prompt: str = """你是一位熟悉下游生物制药工艺开发（蛋白纯化、病毒清除、制剂开发）的数据科学专家。
+请根据任务描述和数据集信息，决定执行路径：
 
-automl_router_user_prompt: str = """Based on the task:
-```{task}```
-Should AutoGluon be used? Respond with AUTOGLUON or NO only.
-"""
+路径 AUTOGLUON（满足以下任一条件时选择）：
+- 任务是标准的预测任务（目标列明确，需要输出预测结果）
+- 用户明确提到 "autogluon"、"automl"、"auto ml" 或 "自动建模"
+- 数据量较小（通常 < 2000 行），特征数较少（< 100 列），数据结构清晰
+
+路径 CODEGEN（满足以下任一条件时选择）：
+- 任务需要定制分析（特征重要性、相关性分析、数据探索等）
+- 需要多步骤数据处理或复杂特征工程
+- 任务描述模糊，需要灵活处理
+
+仅输出单个词：AUTOGLUON 或 CODEGEN。不要输出任何其他内容。"""
+
+automl_router_user_prompt: str = """任务描述：{task}
+
+数据集信息：
+- 文件名：{file_name}
+- 规模：{shape}
+- 列名及类型：{dtypes}
+
+应该使用哪条路径？"""
 
 autogluon_config_system_prompt: str = """You are a machine learning engineer.
 Based on the task description, dataset columns, and sample rows, determine:
@@ -289,6 +302,105 @@ describe which model was used and which metrics were obtained.
 """
 
 
+interview_planner_system_prompt: str = """你是一位资深数据科学专家，专注于下游生物制药工艺开发（包括蛋白纯化、病毒清除、制剂稳定性等领域）。
+
+用户已上传数据集，并有一个初步的建模目标。你的任务是：
+1. 分析数据集的列名和类型，识别可能的目标列、关键工艺参数
+2. 检测数据格式（宽表 vs 长表，例如病毒类型可能是独立列或行内类别特征）
+3. 生成一组精准问题，帮助确认建模规格
+
+问题必须覆盖以下方面（视数据情况取舍）：
+- 目标列选择（要预测的指标）
+- 预测类型（连续数值 vs 分类）
+- 关键特征（哪些工艺参数最相关）
+- 模型使用场景（预测新样本 vs 理解参数影响）
+- 数据质量问题（如有明显缺失列）
+
+输出格式：仅输出 JSON 数组，每个问题包含 question 和 options 字段。
+options 列表最后两项固定为："请帮我推荐" 和 "其他（请描述）"。
+
+示例格式：
+[
+  {
+    "question": "您希望预测哪个指标？",
+    "options": ["MVM_LRV", "XMuLV_LRV", "请帮我推荐", "其他（请描述）"]
+  }
+]
+
+不要输出任何 JSON 之外的文字。"""
+
+interview_planner_user_prompt: str = """建模目标：{task}
+
+数据集文件名：{file_name}
+数据规模：{shape}
+列名及类型：
+{dtypes}
+
+前几行样本：
+{df_head}
+
+请生成问题列表。"""
+
+
+spec_generator_system_prompt: str = """你是一位熟悉 GxP 合规要求的数据科学专家。
+
+根据用户对问题的完整回答，生成一份建模规格书（JSON）。
+
+输出 JSON 必须包含以下字段：
+- target: 目标列名（字符串）
+- task_type: "regression"、"binary" 或 "multiclass"
+- metric: "rmse"、"r2"、"roc_auc"、"f1" 或 "accuracy"
+- features: 推荐特征列列表（数组）
+- data_format_note: 数据格式说明（如检测到宽表/长表格式需要预处理）
+- constraints: 业务约束列表（如 "目标值范围 0~6 log10 TCID50"）
+- rationale: 选型理由，用中文写，1~2 句话
+
+仅输出 JSON，不加任何其他文字。"""
+
+spec_generator_user_prompt: str = """建模目标：{task}
+
+数据集列名：{df_columns}
+
+问答记录：
+{qa_pairs}
+
+请生成建模规格书。"""
+
+
+model_quality_judge_system_prompt: str = """你是一位经验丰富的数据科学专家，正在向非技术背景的研发人员汇报建模结果。
+
+请基于以下信息，给出专业但通俗易懂的评估。
+
+评估要点：
+1. 这个结果靠不靠谱？（一句话，直接说能不能用）
+2. 用这个模型能做什么决策？（两句话，具体到业务场景）
+3. 如果要进一步提升，最重要的一条建议是什么？（或"当前数据已达到较好水平"）
+
+措辞要求：
+- 不要出现"机器学习"、"算法"、"监督学习"、"超参数"等技术术语
+- 用业务人员熟悉的语言：模型、预测准确度、误差、数据量
+- 结论要明确，不能含糊
+
+最后一行必须单独输出（格式固定）：
+VERDICT: USABLE
+或
+VERDICT: IMPROVABLE
+或
+VERDICT: INSUFFICIENT_DATA"""
+
+model_quality_judge_user_prompt: str = """数据集信息：
+- 规模：{shape}
+- 目标列：{target}（{task_type}）
+
+AutoGluon 训练结果：
+{code_results}
+
+建模背景：
+{modeling_spec}
+
+请给出评估。"""
+
+
 # ── Registry ──────────────────────────────────────────────────────────────────
 
 PROMPTS: Dict[str, Dict[str, str]] = {
@@ -319,6 +431,18 @@ PROMPTS: Dict[str, Dict[str, str]] = {
     "automl_router": {
         "system": automl_router_system_prompt,
         "user": automl_router_user_prompt,
+    },
+    "interview_planner": {
+        "system": interview_planner_system_prompt,
+        "user": interview_planner_user_prompt,
+    },
+    "spec_generator": {
+        "system": spec_generator_system_prompt,
+        "user": spec_generator_user_prompt,
+    },
+    "model_quality_judge": {
+        "system": model_quality_judge_system_prompt,
+        "user": model_quality_judge_user_prompt,
     },
     "autogluon_config": {
         "system": autogluon_config_system_prompt,

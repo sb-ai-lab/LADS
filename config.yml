@@ -1,7 +1,10 @@
 llm:
-  provider: openai
-  model_name: gpt-4.5
-  base_url: # Add your OpenAI-compatible endpoint (leave blank for default api.openai.com)
+  provider: openai            # openai | anthropic | groq | ollama | azure
+  model_name: gpt-4.1-mini
+  base_url: https://openai.vocareum.com/v1
+  # Azure OpenAI (set provider: azure and fill the fields below):
+  # deployment_name: my-gpt4-deployment
+  # api_version: 2024-10-21
 
 langfuse:
   host:   # Optional: Langfuse host for tracing
@@ -12,3 +15,7 @@ general:
   code_generation_config: 'local'   # 'local' or 'e2b'
   recursion_limit: 50
   max_code_execution_time: 600      # seconds
+
+persistence:
+  enabled: true
+  path: ./experiments

@@ -145,6 +145,9 @@ def render_sidebar():
 
 
 def _render_config_tab():
+    import json
+    from pathlib import Path
+
     config = st.session_state.get("config")
     if config is None:
         st.info("Config not loaded yet.")
@@ -156,6 +159,27 @@ def _render_config_tab():
     st.markdown('<p class="section-label">Execution</p>', unsafe_allow_html=True)
     mode = config.general.code_generation_config or "local"
     st.code(f"Mode:     {mode}\nTimeout:  {config.general.max_code_execution_time}s\nMax iter: {config.general.max_improvements}", language=None)
+
+    # Experiment history
+    exp_path = Path(config.persistence.path) if config.persistence else Path("./experiments")
+    if exp_path.exists():
+        exp_files = sorted(exp_path.glob("*.json"), reverse=True)[:10]
+        if exp_files:
+            st.markdown('<p class="section-label">Past Experiments</p>', unsafe_allow_html=True)
+            with st.expander(f"📁 {len(exp_files)} experiment(s)", expanded=False):
+                for f in exp_files:
+                    try:
+                        data = json.loads(f.read_text(encoding="utf-8"))
+                        exp_id = data.get("experiment_id", f.stem)
+                        created = data.get("created_at", "")[:10]
+                        task = data.get("task", "")[:60]
+                        verdict = data.get("model_verdict", "")
+                        verdict_icon = {"USABLE": "✅", "IMPROVABLE": "⚠️", "INSUFFICIENT_DATA": "❌"}.get(verdict, "📊")
+                        st.markdown(f"**{verdict_icon} {exp_id}** — {created}")
+                        if task:
+                            st.caption(task)
+                    except Exception:
+                        pass
 
 
 
